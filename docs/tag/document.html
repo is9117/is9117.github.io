@@ -1,211 +1,96 @@
 <!DOCTYPE html>
-<html lang="ko">
-        <head>
-                        <meta charset="utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                        <meta name="generator" content="Pelican" />
-                        <title>Isaac's Tech Blog - document</title>
-                        <link rel="stylesheet" href="https://is9117.github.io/theme/css/main.css" />
-                                <link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Atom Feed" />
-        </head>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
 
-        <body id="index" class="home">
-                <header id="banner" class="body">
-                        <h1><a href="https://is9117.github.io/">Isaac's Tech Blog</a></h1>
-                        <nav><ul>
-                                                <li><a href="https://is9117.github.io/category/api.html">api</a></li>
-                        </ul></nav>
-                </header><!-- /#banner -->
+		<!-- Metadata -->
+			<meta name="description" content="" />
+			<meta property="og:description" content="" />
+			<meta property="og:title" content="Isaac's Tech Blog" />
+			<meta property="og:type" content="website" />
+			<meta property="og:url" content="https://is9117.github.io" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
 
-                <aside id="featured" class="body">
-                    <article>
-                        <h1 class="entry-title"><a href="https://is9117.github.io/drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html">DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화</a></h1>
-<footer class="post-info">
-        <abbr class="published" title="2023-12-06T21:21:00+09:00">
-                Published: Wed 06 December 2023
-        </abbr>
-                <br />
-                <abbr class="modified" title="2024-12-16T16:27:00+09:00">
-                        Updated: Mon 16 December 2024
-                </abbr>
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 
-                <address class="vcard author">
-                        By                                 <a class="url fn" href="https://is9117.github.io/author/isaac-park.html">Isaac Park</a>
-                </address>
-        <p>In <a href="https://is9117.github.io/category/api.html">api</a>.</p>
-<p>tags: <a href="https://is9117.github.io/tag/api.html">api</a> <a href="https://is9117.github.io/tag/backend.html">backend</a> <a href="https://is9117.github.io/tag/python.html">python</a> <a href="https://is9117.github.io/tag/django.html">django</a> <a href="https://is9117.github.io/tag/document.html">document</a> </p>        
-</footer><!-- /.post-info --><h3>개요</h3>
-<p>OpenAPI 3.0(a.k.a. swagger)를 사용, API문서 작업이 조금 더 쉬워 질 수 있는 initiative를 제안합니다.</p>
-<p>첫 셋업 후 및 learning-curve를 극복 시 아래와 같은 장점이 생긴다.</p>
-<ol>
-<li>DRF 코드로 schema가 자동 생성된다.<ol>
-<li>추가/수정 된 코드가 자동으로 문서에 적용되어 중복작업 감소됨</li>
-<li>문서작업을 업데이트 하지 않아 발생하는 이슈 줄어듬</li>
-</ol>
-</li>
-<li>형상관리가 가능합니다.
-git으로 문서가 관리되어 작업자, 일시, 작업범위 등 기록이 자세히 남게 됩니다.</li>
-<li>무료
-postman 발생되는 비용을 절약할 수 있습니다.</li>
-</ol>
-<h3>기본</h3>
-<p>keypoints</p>
-<ol>
-<li>swagger라이브러리로 DRF model, serializer, view, auth, url, pagination 등 소스코드를 기반으로 OpenAPI 3.0 포멧의 schema(json or yaml 파일)를 생성합니다.</li>
-<li>swagger 클라이언트에 schema파일을 로드하면 웹UI로 API문서를 사용가능합니다.</li>
-</ol>
-<p><img alt="swagger 예시" src="../images/openapi/Untitled.png"></p>
-<p>swagger 예시</p>
-<p>model이나 serializer의 필드 데이터를 기반으로 request/response 포멧이 자동 생성됩니다.</p>
-<p>포함되는 정보는 </p>
-<ol>
-<li>type</li>
-<li>read only, write only</li>
-<li>required</li>
-<li>constraint(nullable, max value, regex, etc.)</li>
-<li>description(help_text)</li>
-<li>…</li>
-</ol>
-<p><img alt="response example" src="../images/openapi/Untitled%201.png"></p>
-<p>response example</p>
-<p>request의 parameter도 url pattern으로 자동 생성되고</p>
-<p>필요 시 수동추가 도 가능합니다.</p>
-<p>parameter 종류는 아래와 같습니다.</p>
-<ol>
-<li>cookie</li>
-<li>path</li>
-<li>query</li>
-<li>header</li>
-</ol>
-<p><img alt="GET example" src="../images/openapi/Untitled%202.png"></p>
-<p>GET example</p>
-<h3>Extension</h3>
-<p>코드 기반 자동생성된 스키마가 부정확하거나 내용추가 필요 시 extension이 가능합니다.</p>
-<p>필요 시 request나 response의 example을 추가 할 수 있습니다.</p>
-<p><img alt="Untitled" src="../images/openapi/Untitled%203.png"></p>
-<div class="highlight"><pre><span></span><code><span class="nx">STAFF_POST_EXAMPLES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
-<span class="w">   </span><span class="nx">OpenApiExample</span><span class="p">(</span><span class="s1">&#39;관리자 생성&#39;</span><span class="p">,</span><span class="w"> </span>
-<span class="w">                  </span><span class="p">{</span>
-<span class="w">                     </span><span class="s2">&quot;username&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;test_admin&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;email&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;admin@example.com&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;password&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;groups&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">                     </span><span class="s2">&quot;user_permissions&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">                     </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_staff&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">True</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_superuser&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">True</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;katalk_id&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;phone_num&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;description&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">},</span>
-<span class="w">                  </span><span class="nx">request_only</span><span class="o">=</span><span class="nx">True</span><span class="p">),</span>
-<span class="w">   </span><span class="nx">OpenApiExample</span><span class="p">(</span><span class="s1">&#39;OV 계정 생성&#39;</span><span class="p">,</span><span class="w"> </span>
-<span class="w">                  </span><span class="p">{</span>
-<span class="w">                     </span><span class="s2">&quot;username&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;test_staff&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;email&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;test_staff@onvacation.life&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;password&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;groups&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="nx">globals</span><span class="p">.</span><span class="nx">GROUP_OV</span><span class="p">],</span>
-<span class="w">                     </span><span class="s2">&quot;user_permissions&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="nx">globals</span><span class="p">.</span><span class="nx">PERMISSION_EDIT</span><span class="p">],</span>
-<span class="w">                     </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;홍길동&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_staff&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">True</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_superuser&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">False</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;katalk_id&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;phone_num&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;description&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">},</span>
-<span class="w">                  </span><span class="nx">request_only</span><span class="o">=</span><span class="nx">True</span><span class="p">),</span>
-<span class="w">   </span><span class="nx">OpenApiExample</span><span class="p">(</span><span class="s1">&#39;파트너 계정 생성&#39;</span><span class="p">,</span><span class="w"> </span>
-<span class="w">                  </span><span class="p">{</span>
-<span class="w">                     </span><span class="s2">&quot;username&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;test_staff&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;email&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;test_staff@tourcompany.com&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;password&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;groups&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="nx">globals</span><span class="p">.</span><span class="nx">GROUP_PARTNER</span><span class="p">],</span>
-<span class="w">                     </span><span class="s2">&quot;user_permissions&quot;</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="p">[],</span>
-<span class="w">                     </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;홍길동&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_staff&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">True</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;is_superuser&quot;</span><span class="o">:</span><span class="w"> </span><span class="nx">False</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;katalk_id&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;phone_num&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">,</span>
-<span class="w">                     </span><span class="s2">&quot;description&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&quot;</span><span class="p">},</span>
-<span class="w">                  </span><span class="nx">request_only</span><span class="o">=</span><span class="nx">True</span><span class="p">),</span>
-<span class="p">]</span>
+		<title>Isaac's Tech Blog - document tag</title>
 
-<span class="err">@</span><span class="nx">extend_schema_view</span><span class="p">(</span><span class="nx">post</span><span class="o">=</span><span class="nx">extend_schema</span><span class="p">(</span>
-<span class="w">                            </span><span class="nx">description</span><span class="o">=</span><span class="nx">STAFF_POST_DESCRIPTION</span><span class="p">,</span>
-<span class="w">                            </span><span class="nx">examples</span><span class="o">=</span><span class="nx">STAFF_POST_EXAMPLES</span><span class="p">))</span>
-<span class="kd">class</span><span class="w"> </span><span class="nx">StaffListCreateView</span><span class="p">(</span><span class="nx">generics</span><span class="p">.</span><span class="nx">ListCreateAPIView</span><span class="p">)</span><span class="o">:</span>
-<span class="w">        </span><span class="p">...</span>
-</code></pre></div>
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
 
-<p>serializer method field 같은 type 없는 필드는 decorator로 명시가 가능합니다.</p>
-<div class="highlight"><pre><span></span><code><span class="err">@</span><span class="nx">extend_schema_field</span><span class="p">(</span><span class="nx">field</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;boolean&#39;</span><span class="p">})</span>
-<span class="nx">def</span><span class="w"> </span><span class="nx">get_kakao_linked</span><span class="p">(</span><span class="nx">self</span><span class="p">,</span><span class="w"> </span><span class="nx">obj</span><span class="p">)</span><span class="o">:</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="nx">not</span><span class="w"> </span><span class="nx">hasattr</span><span class="p">(</span><span class="nx">obj</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;client_profile&#39;</span><span class="p">)</span><span class="o">:</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">False</span>
-<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="nx">bool</span><span class="p">(</span><span class="nx">obj</span><span class="p">.</span><span class="nx">client_profile</span><span class="p">.</span><span class="nx">kakao_id</span><span class="p">)</span>
-</code></pre></div>
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
 
-<p>좀 더 복잡한 케이스:</p>
-<p>아래는 serializer <code>to_representation</code> 메소드서 생성되어 스키마에 빠진 필드를 추가하는 예제입니다.</p>
-<div class="highlight"><pre><span></span><code><span class="kd">class</span><span class="w"> </span><span class="nx">Fix13</span><span class="p">(</span><span class="nx">OpenApiSerializerExtension</span><span class="p">)</span><span class="o">:</span>
-<span class="w">    </span><span class="nx">target_class</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">AirlineCardSerializer</span>
-<span class="w">    </span><span class="nx">def</span><span class="w"> </span><span class="nx">map_serializer</span><span class="p">(</span><span class="nx">self</span><span class="p">,</span><span class="w"> </span><span class="nx">auto_schema</span><span class="p">,</span><span class="w"> </span><span class="nx">direction</span><span class="p">)</span><span class="o">:</span>
-<span class="w">        </span><span class="kd">class</span><span class="w"> </span><span class="nx">Fixed</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">target_class</span><span class="p">)</span><span class="o">:</span>
-<span class="w">            </span><span class="nx">subtype</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">serializers</span><span class="p">.</span><span class="nx">ChoiceField</span><span class="p">(</span><span class="nx">choices</span><span class="o">=</span><span class="nx">globals</span><span class="p">.</span><span class="nx">CARD_TYPE_AIRLINE_SUBTYPE_CHOICES</span><span class="p">,</span><span class="w"> </span><span class="nx">required</span><span class="o">=</span><span class="nx">False</span><span class="p">)</span>
-<span class="w">            </span><span class="nx">via_direction</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">serializers</span><span class="p">.</span><span class="nx">ChoiceField</span><span class="p">(</span><span class="nx">choices</span><span class="o">=</span><span class="nx">globals</span><span class="p">.</span><span class="nx">AIRLINE_CARD_VIA_DIRECTION_CHOICES</span><span class="p">,</span><span class="w"> </span><span class="nx">required</span><span class="o">=</span><span class="nx">False</span><span class="p">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="nx">auto_schema</span><span class="p">.</span><span class="nx">_map_serializer</span><span class="p">(</span><span class="nx">Fixed</span><span class="p">,</span><span class="w"> </span><span class="nx">direction</span><span class="p">)</span>
-</code></pre></div>
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
 
-<h3>API Client</h3>
-<p>postman처럼 API 호출 client를 지원합니다.</p>
-<p><img alt="Untitled" src="../images/openapi/Untitled%204.png"></p>
-<h3>Library</h3>
-<p>python, django, django-rest-framework용 swagger 라이브러리가 몇개가 있지만</p>
-<p>아직까지 지원이 되고 가장 많이 사용되는 라이브러리는 <code>drf-spectacular</code>가 있습니다.</p>
-<p><img alt="Untitled" src="../images/openapi/Untitled%205.png"></p>
-<h3>3rd party UI</h3>
-<p>기본 제공되는 swagger-ui말고도 schema파일만 연동하면 웹 기반 문서를 만들어주는 SaaS도 존재합니다.</p>
-<p>CI툴로 자동 연동도 가능해 문서 배포를 자동화 할 수 있습니다.</p>
-<p>이런 SaaS는 검색 등 편의기능이 있고, UI도 괜찮습니다.</p>
-<p><strong>readme</strong></p>
-<p>link: <a href="https://readme.com/documentation">https://readme.com/documentation</a></p>
-<p><strong>stoplight</strong></p>
-<p>link: <a href="https://stoplight.io/drive-api-results">https://stoplight.io/drive-api-results</a></p>
-<p><strong>Document360</strong></p>
-<p><strong>SwaggerHub</strong></p>
-<p><strong>Redocly</strong></p>
-<p>…</p>
-<p>ref: <a href="https://document360.com/blog/api-documentation-tools/">https://document360.com/blog/api-documentation-tools/</a></p>
-<h3>QA환경 접근정보:</h3>
-<p>URL: <a href="https://api-qa.memopatch.care/schema/swagger-ui/#">https://api-qa.memopatch.care/schema/swagger-ui/#</a></p>
-<p>계정: QA care/partner 로그인 정보</p>                    </article>
-                </aside><!-- /#featured -->
-                <section id="extras" class="body">
-                                <div class="blogroll">
-                                        <h2>links</h2>
-                                        <ul>
-                                                        <li><a href="https://getpelican.com/">Pelican</a></li>
-                                                        <li><a href="https://www.python.org/">Python.org</a></li>
-                                                        <li><a href="https://palletsprojects.com/p/jinja/">Jinja2</a></li>
-                                                        <li><a href="#">You can modify those links in your config file</a></li>
-                                        </ul>
-                                </div><!-- /.blogroll -->
-                                <div class="social">
-                                        <h2>social</h2>
-                                        <ul>
-                                                        <li><a href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+		<!-- Analytics -->
+	</head>
 
-                                                        <li><a href="#">You can add links in your config file</a></li>
-                                                        <li><a href="#">Another social link</a></li>
-                                        </ul>
-                                </div><!-- /.social -->
-                </section><!-- /#extras -->
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
 
-                <footer id="contentinfo" class="body">
-                        <address id="about" class="vcard body">
-                                Proudly powered by <a rel="nofollow" href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a rel="nofollow" href="https://www.python.org/">Python</a>.
-                        </address><!-- /#about -->
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+	<div class="posts">
+			<div class="post">
+				<h1 class="post-title" href="https://is9117.github.io/drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html">
+					<a href="https://is9117.github.io/drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html">DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화</a>
+				</h1>
+				<span class="post-date">Wed 06 December 2023</span>
+					<span class="post-tags">
+						Tags:
+						<ul>
+								<li><a href="https://is9117.github.io/tag/api.html">api</a></li>
+								<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+								<li><a href="https://is9117.github.io/tag/python.html">python</a></li>
+								<li><a href="https://is9117.github.io/tag/django.html">django</a></li>
+								<li><a href="https://is9117.github.io/tag/document.html">document</a></li>
+						</ul>
+					</span>
+				<p>
+					<p>OpenAPI 3.0, DRF</p>
+				</p>
+				<a class="read-more" href="drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html">Continue reading »</a>
+			</div>
+	</div>
+	<div class="pagination">
 
-                        <p>The theme is by <a rel="nofollow" href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
-                </footer><!-- /#contentinfo -->
+		<span class="pagination-item older">Newer</span>
 
-        </body>
+		<span class="pagination-item newer">Older</span>
+	</div>
+		</div>
+	</body>
 </html>

@@ -1,46 +1,73 @@
 <!DOCTYPE html>
-<html lang="ko">
-        <head>
-                        <meta charset="utf-8" />
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                        <meta name="generator" content="Pelican" />
-                        <title>DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화</title>
-                        <link rel="stylesheet" href="https://is9117.github.io/theme/css/main.css" />
-                                <link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Atom Feed" />
-    <meta name="description" content="OpenAPI 3.0, DRF" />
-        </head>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
 
-        <body id="index" class="home">
-                <header id="banner" class="body">
-                        <h1><a href="https://is9117.github.io/">Isaac's Tech Blog</a></h1>
-                        <nav><ul>
-                                                <li class="active"><a href="https://is9117.github.io/category/api.html">api</a></li>
-                        </ul></nav>
-                </header><!-- /#banner -->
-  <section id="content" class="body">
-    <article>
-      <header>
-        <h1 class="entry-title">
-          <a href="https://is9117.github.io/drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html" rel="bookmark"
-             title="Permalink to DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화">DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화</a></h1>
-      </header>
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/drfeseo-openapiaka-swagger-30-hwalyong-api-munseohwa.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
 
-      <div class="entry-content">
-<footer class="post-info">
-        <abbr class="published" title="2023-12-06T21:21:00+09:00">
-                Published: Wed 06 December 2023
-        </abbr>
-                <br />
-                <abbr class="modified" title="2024-12-16T16:27:00+09:00">
-                        Updated: Mon 16 December 2024
-                </abbr>
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 
-                <address class="vcard author">
-                        By                                 <a class="url fn" href="https://is9117.github.io/author/isaac-park.html">Isaac Park</a>
-                </address>
-        <p>In <a href="https://is9117.github.io/category/api.html">api</a>.</p>
-<p>tags: <a href="https://is9117.github.io/tag/api.html">api</a> <a href="https://is9117.github.io/tag/backend.html">backend</a> <a href="https://is9117.github.io/tag/python.html">python</a> <a href="https://is9117.github.io/tag/django.html">django</a> <a href="https://is9117.github.io/tag/document.html">document</a> </p>        
-</footer><!-- /.post-info -->        <h3>개요</h3>
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/api.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">DRF에서 OpenAPI(a.k.a Swagger) 3.0 활용 API 문서화</h1>
+	<span class="post-date">Wed 06 December 2023</span>
+	<h3>개요</h3>
 <p>OpenAPI 3.0(a.k.a. swagger)를 사용, API문서 작업이 조금 더 쉬워 질 수 있는 initiative를 제안합니다.</p>
 <p>첫 셋업 후 및 learning-curve를 극복 시 아래와 같은 장점이 생긴다.</p>
 <ol>
@@ -183,38 +210,19 @@ postman 발생되는 비용을 절약할 수 있습니다.</li>
 <h3>QA환경 접근정보:</h3>
 <p>URL: <a href="https://api-qa.memopatch.care/schema/swagger-ui/#">https://api-qa.memopatch.care/schema/swagger-ui/#</a></p>
 <p>계정: QA care/partner 로그인 정보</p>
-      </div><!-- /.entry-content -->
 
-    </article>
-  </section>
-                <section id="extras" class="body">
-                                <div class="blogroll">
-                                        <h2>links</h2>
-                                        <ul>
-                                                        <li><a href="https://getpelican.com/">Pelican</a></li>
-                                                        <li><a href="https://www.python.org/">Python.org</a></li>
-                                                        <li><a href="https://palletsprojects.com/p/jinja/">Jinja2</a></li>
-                                                        <li><a href="#">You can modify those links in your config file</a></li>
-                                        </ul>
-                                </div><!-- /.blogroll -->
-                                <div class="social">
-                                        <h2>social</h2>
-                                        <ul>
-                                                        <li><a href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate">atom feed</a></li>
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/api.html">api</a></li>
+					<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+					<li><a href="https://is9117.github.io/tag/python.html">python</a></li>
+					<li><a href="https://is9117.github.io/tag/django.html">django</a></li>
+					<li><a href="https://is9117.github.io/tag/document.html">document</a></li>
+			</ul>
+		</span>
 
-                                                        <li><a href="#">You can add links in your config file</a></li>
-                                                        <li><a href="#">Another social link</a></li>
-                                        </ul>
-                                </div><!-- /.social -->
-                </section><!-- /#extras -->
-
-                <footer id="contentinfo" class="body">
-                        <address id="about" class="vcard body">
-                                Proudly powered by <a rel="nofollow" href="https://getpelican.com/">Pelican</a>, which takes great advantage of <a rel="nofollow" href="https://www.python.org/">Python</a>.
-                        </address><!-- /#about -->
-
-                        <p>The theme is by <a rel="nofollow" href="https://www.smashingmagazine.com/2009/08/designing-a-html-5-layout-from-scratch/">Smashing Magazine</a>, thanks!</p>
-                </footer><!-- /#contentinfo -->
-
-        </body>
+</div>
+		</div>
+	</body>
 </html>
