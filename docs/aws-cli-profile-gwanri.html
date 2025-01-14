@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="AWS CLI profile 관리" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/aws-cli-profile-gwanri.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/infra.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">AWS CLI profile 관리</h1>
+	<span class="post-date">Mon 15 January 2024</span>
+	<h2>Abstract</h2>
+<p>local aws cli에서 여러 계정을 switch해야 되는 경우가 있습니다. 예로 dev, stage, prod환경을 대상으로 aws cli를 사용해야 되는 경우가 있습니다.</p>
+<p>이런 상황에서 env파일로만 아니라, shell에서 바로 계정을 switch하는 방법을 기록하려고 합니다.</p>
+<h2>AWS 설정파일</h2>
+<p>여기서 소개할 파일 외 여러 설정파일이 있지만, 가장 기본적인 설정파일에 대한 설명을 하려고 합니다.</p>
+<p>두 파일 다 <code>aws configure</code> 명령어로 자동 생성되는 파일입니다.</p>
+<p><code>~/.aws/config</code></p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>default<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+
+<span class="o">[</span>profile<span class="w"> </span>jessie<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+
+<span class="o">[</span>profile<span class="w"> </span>isaac<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+</code></pre></div>
+
+<p>region, format 등 설정파일을 저장하는 장소입니다.</p>
+<p><code>[profile {profile_name}]</code> 포멧으로 프로파일을 구분할 수 있습니다.</p>
+<p><code>~/.aws/credentials</code></p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>default<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....EW
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>XM....HY
+
+<span class="o">[</span>jessie<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....EW
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>XM....HY
+
+<span class="o">[</span>isaac<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....HF
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Zs....uS
+</code></pre></div>
+
+<p>access key, access secret key 등 credential정보 저장소 입니다.</p>
+<p><code>[{profile_name}]</code> 포멧으로 프로파일을 구분하고 있습니다.</p>
+<h2>AWS 환경변수</h2>
+<p>aws cli가 사용되는 환경변수 중 profile switching에 연관 된 내용만 설명합니다.</p>
+<p><code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code></p>
+<p><code>AWS_PROFILE</code></p>
+<p>위에서 아래로 우선순위를 가집니다. 즉 명령어 option으로 override하지 않는 이상 위에 환경변수가 우선순위를 가지고 실행됩니다.</p>
+<p><code>AWS_PROFILE</code>은 config, credentials 파일의 프로파일명을 사용하는 환경변수입니다.</p>
+<h2>Profile switching</h2>
+<h3>환경변수</h3>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_PROFILE</span><span class="o">=</span>jessie
+aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;UserId&quot;</span>:<span class="w"> </span><span class="s2">&quot;AIDAVGIMKKMMBD5INZV4W&quot;</span>,
+<span class="w">    </span><span class="s2">&quot;Account&quot;</span>:<span class="w"> </span><span class="s2">&quot;357044998936&quot;</span>,
+<span class="w">    </span><span class="s2">&quot;Arn&quot;</span>:<span class="w"> </span><span class="s2">&quot;arn:aws:iam::357044998936:user/jesse@huinno.com&quot;</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p>주의 해야 할 부분은 <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code> 환경변수가 설정 되어있을 경우에는 override되어 AWS_PROFILE을 무시하고 <code>AWS_ACCESS_KEY_ID</code>, <code>AWS_SECRET_ACCESS_KEY</code>기준으로 aws api호출하게 됩니다.</p>
+<h3>Option</h3>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">AWS_PROFILE</span><span class="o">=</span>default<span class="w">   </span><span class="c1"># 이 부분 무시 됨</span>
+aws<span class="w"> </span>sts<span class="w"> </span>get-caller-identity<span class="w"> </span>--profile<span class="w"> </span>isaac<span class="w">   </span><span class="c1"># override</span>
+<span class="o">{</span>
+<span class="w">    </span><span class="s2">&quot;UserId&quot;</span>:<span class="w"> </span><span class="s2">&quot;AIDAVGIMKKMMDYH5AHYDB&quot;</span>,
+<span class="w">    </span><span class="s2">&quot;Account&quot;</span>:<span class="w"> </span><span class="s2">&quot;357044998936&quot;</span>,
+<span class="w">    </span><span class="s2">&quot;Arn&quot;</span>:<span class="w"> </span><span class="s2">&quot;arn:aws:iam::357044998936:user/isaac.park@huinno.com&quot;</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<p><code>—-profile</code> 옵션으로 환경변수 설정을 override할 수 있습니다.</p>
+<h2>Profile 추가</h2>
+<h3>AWS CLI사용</h3>
+<div class="highlight"><pre><span></span><code>aws<span class="w"> </span>configure<span class="w"> </span>--profile<span class="w"> </span><span class="o">{</span>new_profile_name<span class="o">}</span>
+AWS<span class="w"> </span>Access<span class="w"> </span>Key<span class="w"> </span>ID<span class="w"> </span><span class="o">[</span>None<span class="o">]</span>:<span class="w"> </span>....
+AWS<span class="w"> </span>Secret<span class="w"> </span>Access<span class="w"> </span>Key<span class="w"> </span><span class="o">[</span>None<span class="o">]</span>:<span class="w"> </span>....
+Default<span class="w"> </span>region<span class="w"> </span>name<span class="w"> </span><span class="o">[</span>None<span class="o">]</span>:<span class="w"> </span>ap-norteast-2
+Default<span class="w"> </span>output<span class="w"> </span>format<span class="w"> </span><span class="o">[</span>None<span class="o">]</span>:
+</code></pre></div>
+
+<h3>설정 파일 수정</h3>
+<p><code>~/.aws/config</code></p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>default<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+
+<span class="o">[</span>profile<span class="w"> </span>jessie<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+
+<span class="o">[</span>profile<span class="w"> </span>isaac<span class="o">]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-northeast-2
+
+<span class="o">[</span>profile<span class="w"> </span><span class="o">{</span>new_profile_name<span class="o">}]</span>
+<span class="nv">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ap-notrheast-2
+</code></pre></div>
+
+<p><code>~/.aws/credentials</code></p>
+<div class="highlight"><pre><span></span><code><span class="o">[</span>default<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....EW
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>XM....HY
+
+<span class="o">[</span>jessie<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....EW
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>XM....HY
+
+<span class="o">[</span>isaac<span class="o">]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....HF
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Zs....uS
+
+<span class="o">[{</span>new_profile_name<span class="o">}]</span>
+<span class="nv">aws_access_key_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>AK....HF
+<span class="nv">aws_secret_access_key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>Zs....uS
+</code></pre></div>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/aws.html">aws</a></li>
+					<li><a href="https://is9117.github.io/tag/infra.html">infra</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>

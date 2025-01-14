@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog - infra</title><link href="https://is9117.github.io/" rel="alternate"></link><link href="https://is9117.github.io/feeds/infra.atom.xml" rel="self"></link><id>https://is9117.github.io/</id><updated>2024-01-18T09:12:00+09:00</updated><entry><title>AWS CLI profile 관리</title><link href="https://is9117.github.io/aws-cli-profile-gwanri.html" rel="alternate"></link><published>2024-01-15T16:36:00+09:00</published><updated>2024-01-18T09:12:00+09:00</updated><author><name>Isaac Park</name></author><id>tag:is9117.github.io,2024-01-15:/aws-cli-profile-gwanri.html</id><summary type="html">&lt;p&gt;AWS CLI profile&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Abstract&lt;/h2&gt;
+&lt;p&gt;local aws cli에서 여러 계정을 switch해야 되는 경우가 있습니다. 예로 dev, stage, prod환경을 대상으로 aws cli를 사용해야 되는 경우가 있습니다.&lt;/p&gt;
+&lt;p&gt;이런 상황에서 env파일로만 아니라, shell에서 바로 계정을 switch하는 방법을 기록하려고 합니다.&lt;/p&gt;
+&lt;h2&gt;AWS 설정파일&lt;/h2&gt;
+&lt;p&gt;여기서 소개할 파일 외 여러 설정파일이 있지만, 가장 기본적인 설정파일에 대한 설명을 하려고 합니다.&lt;/p&gt;
+&lt;p&gt;두 파일 다 &lt;code&gt;aws configure&lt;/code&gt; 명령어로 자동 생성되는 파일입니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;~/.aws/config&lt;/code&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;[&lt;/span&gt;default&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+
+&lt;span class="o"&gt;[&lt;/span&gt;profile&lt;span class="w"&gt; &lt;/span&gt;jessie&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+
+&lt;span class="o"&gt;[&lt;/span&gt;profile&lt;span class="w"&gt; &lt;/span&gt;isaac&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;region, format 등 설정파일을 저장하는 장소입니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;[profile {profile_name}]&lt;/code&gt; 포멧으로 프로파일을 구분할 수 있습니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;~/.aws/credentials&lt;/code&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;[&lt;/span&gt;default&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....EW
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;XM....HY
+
+&lt;span class="o"&gt;[&lt;/span&gt;jessie&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....EW
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;XM....HY
+
+&lt;span class="o"&gt;[&lt;/span&gt;isaac&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....HF
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;Zs....uS
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;access key, access secret key 등 credential정보 저장소 입니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;[{profile_name}]&lt;/code&gt; 포멧으로 프로파일을 구분하고 있습니다.&lt;/p&gt;
+&lt;h2&gt;AWS 환경변수&lt;/h2&gt;
+&lt;p&gt;aws cli가 사용되는 환경변수 중 profile switching에 연관 된 내용만 설명합니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;AWS_ACCESS_KEY_ID&lt;/code&gt;, &lt;code&gt;AWS_SECRET_ACCESS_KEY&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;AWS_PROFILE&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;위에서 아래로 우선순위를 가집니다. 즉 명령어 option으로 override하지 않는 이상 위에 환경변수가 우선순위를 가지고 실행됩니다.&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;AWS_PROFILE&lt;/code&gt;은 config, credentials 파일의 프로파일명을 사용하는 환경변수입니다.&lt;/p&gt;
+&lt;h2&gt;Profile switching&lt;/h2&gt;
+&lt;h3&gt;환경변수&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="nb"&gt;export&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;AWS_PROFILE&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;jessie
+aws&lt;span class="w"&gt; &lt;/span&gt;sts&lt;span class="w"&gt; &lt;/span&gt;get-caller-identity
+&lt;span class="o"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;UserId&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;AIDAVGIMKKMMBD5INZV4W&amp;quot;&lt;/span&gt;,
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Account&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;357044998936&amp;quot;&lt;/span&gt;,
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Arn&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arn:aws:iam::357044998936:user/jesse@huinno.com&amp;quot;&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;주의 해야 할 부분은 &lt;code&gt;AWS_ACCESS_KEY_ID&lt;/code&gt;, &lt;code&gt;AWS_SECRET_ACCESS_KEY&lt;/code&gt; 환경변수가 설정 되어있을 경우에는 override되어 AWS_PROFILE을 무시하고 &lt;code&gt;AWS_ACCESS_KEY_ID&lt;/code&gt;, &lt;code&gt;AWS_SECRET_ACCESS_KEY&lt;/code&gt;기준으로 aws api호출하게 됩니다.&lt;/p&gt;
+&lt;h3&gt;Option&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="nb"&gt;export&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;AWS_PROFILE&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;default&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="c1"&gt;# 이 부분 무시 됨&lt;/span&gt;
+aws&lt;span class="w"&gt; &lt;/span&gt;sts&lt;span class="w"&gt; &lt;/span&gt;get-caller-identity&lt;span class="w"&gt; &lt;/span&gt;--profile&lt;span class="w"&gt; &lt;/span&gt;isaac&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="c1"&gt;# override&lt;/span&gt;
+&lt;span class="o"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;UserId&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;AIDAVGIMKKMMDYH5AHYDB&amp;quot;&lt;/span&gt;,
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Account&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;357044998936&amp;quot;&lt;/span&gt;,
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;Arn&amp;quot;&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arn:aws:iam::357044998936:user/isaac.park@huinno.com&amp;quot;&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code&gt;—-profile&lt;/code&gt; 옵션으로 환경변수 설정을 override할 수 있습니다.&lt;/p&gt;
+&lt;h2&gt;Profile 추가&lt;/h2&gt;
+&lt;h3&gt;AWS CLI사용&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;aws&lt;span class="w"&gt; &lt;/span&gt;configure&lt;span class="w"&gt; &lt;/span&gt;--profile&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;new_profile_name&lt;span class="o"&gt;}&lt;/span&gt;
+AWS&lt;span class="w"&gt; &lt;/span&gt;Access&lt;span class="w"&gt; &lt;/span&gt;Key&lt;span class="w"&gt; &lt;/span&gt;ID&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;None&lt;span class="o"&gt;]&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;....
+AWS&lt;span class="w"&gt; &lt;/span&gt;Secret&lt;span class="w"&gt; &lt;/span&gt;Access&lt;span class="w"&gt; &lt;/span&gt;Key&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;None&lt;span class="o"&gt;]&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;....
+Default&lt;span class="w"&gt; &lt;/span&gt;region&lt;span class="w"&gt; &lt;/span&gt;name&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;None&lt;span class="o"&gt;]&lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;ap-norteast-2
+Default&lt;span class="w"&gt; &lt;/span&gt;output&lt;span class="w"&gt; &lt;/span&gt;format&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;None&lt;span class="o"&gt;]&lt;/span&gt;:
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;설정 파일 수정&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;~/.aws/config&lt;/code&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;[&lt;/span&gt;default&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+
+&lt;span class="o"&gt;[&lt;/span&gt;profile&lt;span class="w"&gt; &lt;/span&gt;jessie&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+
+&lt;span class="o"&gt;[&lt;/span&gt;profile&lt;span class="w"&gt; &lt;/span&gt;isaac&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-northeast-2
+
+&lt;span class="o"&gt;[&lt;/span&gt;profile&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;{&lt;/span&gt;new_profile_name&lt;span class="o"&gt;}]&lt;/span&gt;
+&lt;span class="nv"&gt;region&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ap-notrheast-2
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code&gt;~/.aws/credentials&lt;/code&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;[&lt;/span&gt;default&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....EW
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;XM....HY
+
+&lt;span class="o"&gt;[&lt;/span&gt;jessie&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....EW
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;XM....HY
+
+&lt;span class="o"&gt;[&lt;/span&gt;isaac&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....HF
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;Zs....uS
+
+&lt;span class="o"&gt;[{&lt;/span&gt;new_profile_name&lt;span class="o"&gt;}]&lt;/span&gt;
+&lt;span class="nv"&gt;aws_access_key_id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;AK....HF
+&lt;span class="nv"&gt;aws_secret_access_key&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;Zs....uS
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content><category term="infra"></category><category term="aws"></category><category term="infra"></category></entry></feed>

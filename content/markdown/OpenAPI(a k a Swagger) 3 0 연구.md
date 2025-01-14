@@ -187,9 +187,3 @@ link: [https://stoplight.io/drive-api-results](https://stoplight.io/drive-api-re
 …
 
 ref: [https://document360.com/blog/api-documentation-tools/](https://document360.com/blog/api-documentation-tools/)
-
-### QA환경 접근정보:
-
-URL: [https://api-qa.memopatch.care/schema/swagger-ui/#](https://api-qa.memopatch.care/schema/swagger-ui/#)
-
-계정: QA care/partner 로그인 정보

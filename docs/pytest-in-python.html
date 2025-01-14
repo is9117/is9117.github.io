@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="pytest in python" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/pytest-in-python.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/backend.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">pytest in python</h1>
+	<span class="post-date">Mon 08 January 2024</span>
+	<h2>🗂️목차</h2>
+<hr>
+<h2>🎯Abstract</h2>
+<p>이번 포스팅에서는 pytest 구성 및 활용 방법을 소개합니다.</p>
+<p>특히, 데이터베이스와 연관된 테스트 자동화가 어떤 영향을 미치는지, 이를 어떻게 설계하고 실행하는지에 대해 다룹니다.</p>
+<p>테스트 실행 방법과 커스터마이징 방식에 대해서도 설명하며, 이미 구현된 커버리지 테스트의 실행 방법과 관련된 아이디어를 공유합니다.</p>
+<p>또한, Github Actions를 활용한 CI 테스트 자동화 스크립트 구현 과정을 소개합니다. PR 생성 시 필수 머지 조건 설정 방법과 스크립트 수정 가능성에 대해서도 설명합니다.</p>
+<h2>⚙️PyTest</h2>
+<h3>pytest를 선택한 이유</h3>
+<p>Python에서 테스트를 작성할 때 주로 사용하는 라이브러리로는 pytest와 unittest가 있습니다.</p>
+<p>pytest는 3rd-party 라이브러리로, 다양한 기능과 최신 IDE와의 뛰어난 호환성을 제공합니다.
+unittest는 Python 표준 라이브러리의 일부로, JUnit(Java unit-test) 스타일의 구조를 따릅니다. 직관적이고 간단한 사용법이 장점입니다.
+두 라이브러리는 기본적으로 유사한 기능을 제공하지만, pytest는 hook이나 scope fixture 등 더 복잡하고 유연한 기능을 지원합니다.</p>
+<p>제가 pytest를 선택한 이유는 다음과 같습니다:</p>
+<p>많은 Python 오픈소스 커뮤니티가 pytest를 표준으로 채택하고 있습니다.
+미래의 확장성과 유지보수를 고려한 future-proof 선택이기 때문입니다.</p>
+<h3>framework or vanilla approach</h3>
+<p>테스트를 설계할 때, 라이브러리를 기반으로 맞춤형 테스트 framework를 구축하는 경우가 종종 있습니다. 예를 들어, Win32 API를 기반으로 MFC를 구축하는 것처럼, pytest를 기반으로 서비스에 적합한 맞춤형 framework를 만들어 재활용성과 추상화를 통해 생산성을 높일 수 있습니다.</p>
+<p>하지만 이러한 framework 접근법에는 몇 가지 한계가 존재합니다:</p>
+<p>Framework 자체 테스트 필요성
+Framework를 만들다 보면 그 자체를 테스트해야 하는 상황이 발생합니다. 이 과정에서 테스트 코드에 버그가 숨어 있어도 이를 발견하기 어려울 수 있습니다.</p>
+<p>문서화의 부족
+특히 처음 framework를 접하는 개발자들에게, 문서화가 부족한 framework는 적용 및 학습의 큰 장벽이 될 수 있습니다. 이러한 문제는 종종 맞춤형 테스트 framework에서도 발견됩니다.</p>
+<p>그래서 선택한 Vanilla Approach
+이런 이유로, 가능한 한 pytest의 기본 기능을 최대한 활용하고, 반복적으로 사용되는 boilerplate 코드는 helper로 분리하는 vanilla approach를 채택했습니다.</p>
+<p>이 접근법은 간단하고 직관적이며, 추가적인 학습 없이도 pytest의 기본 문서만으로 테스트를 이해하고 작성할 수 있는 장점이 있습니다.
+미래의 확장성
+테스트가 점점 복잡해지고 양이 증가하면서 발생하는 문제는 다음과 같은 방법을 통해 해결할 수 있습니다:</p>
+<p>MSA(Microservices Architecture)로 도메인 분리
+테스트 범위를 줄이고 독립성을 강화할 수 있습니다.
+기타 새로운 방법론 도입
+프로젝트의 성장과 함께 보다 적합한 도구나 설계를 고려할 필요가 있습니다.</p>
+<h3>fixture and scope</h3>
+<p>pytest fixture는 테스트 간 공유되는 setup이라고 생각하시면 됩니다. constructor와 destructor가 있어, 필요 시 실행 시 생성되는 코드, 종료 시 제거되는 코드를 정의 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">Senior</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">Student</span><span class="p">(</span><span class="nb">type</span><span class="o">=</span><span class="n">STUDENT</span><span class="o">.</span><span class="n">SENIOR</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="c1"># constructor</span>
+    <span class="n">util_obj</span> <span class="o">=</span> <span class="n">Uitls</span><span class="p">()</span>
+
+    <span class="c1"># yield return</span>
+    <span class="k">yield</span> <span class="n">util_obj</span>
+
+    <span class="c1"># destructor</span>
+    <span class="n">util_obj</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</code></pre></div>
+
+<p>fixture에는 scope이란 용어로 테스트간 공유되는 범위를 지정할 수 있습니다.</p>
+<p>scope에 따라 범위기준으로 fixture가 재활용될지, 다시 생성할 지 결정됩니다.</p>
+<p><strong>scope</strong>:</p>
+<ul>
+<li>function: 기본값, 미지정 시 기본설정, 함수 시작 전후로 리셋 됨</li>
+<li>class: class간 재활용되는 scope</li>
+<li>module</li>
+<li>package</li>
+<li>session: 전체 테스트 세션에 공유됨, global scope이라고 볼 수 있음, multi processing으로 test run시 여러 session이 있을 수 있음</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s1">&#39;session&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sess</span><span class="p">():</span>
+    <span class="c1"># global initialization here</span>
+    <span class="o">...</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s1">&#39;class&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">():</span>
+    <span class="c1"># setup class here</span>
+    <span class="n">yeild</span>
+    <span class="c1"># tear down class here</span>
+
+<span class="c1"># fixture를 parameter사용하지 않고 적용하는 방법</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="s1">&#39;setup&#39;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestClass1</span><span class="p">:</span>
+    <span class="c1"># 모든 test method가 실행 전에 setup 실행</span>
+    <span class="c1"># 모든 test method 종료 후 tear down 부분 실행</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_case1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_case2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</code></pre></div>
+
+<p><strong>reference</strong>:</p>
+<p>테스트가 fixture를 사용하는법은 아래와 같습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;Hello&#39;</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_baa</span><span class="p">(</span><span class="n">foo</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">foo</span><span class="p">)</span>
+    <span class="c1"># &#39;Hello&#39; 출력</span>
+</code></pre></div>
+
+<p>fixture는 꼭 같은 module서 정의될 필요 없습니다.</p>
+<p>다른 모듈에서 정의 후 import 후 사용 가능합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: foo.py</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;Hello&#39;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: bar.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">foo</span> <span class="n">impor</span> <span class="n">foo</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_bar</span><span class="p">(</span><span class="n">foo</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">foo</span><span class="p">)</span>
+    <span class="c1"># &#39;Hello&#39; 출력</span>
+</code></pre></div>
+
+<p>pytest는 hook이나 공용 fixture를 명시 할 수 있는 특별 모듈이 있습니다.</p>
+<p><code>conftest.py</code>이름의 파일 아래 모든 모듈은 import없이 해당 파일 내 모든 fixture 접근이 가능합니다. 이를 fixture discovery라고 합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: tests/conftest.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="k">return</span> <span class="s1">&#39;foo&#39;</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: tests/bar.py</span>
+<span class="c1"># import 불필요</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_bar</span><span class="p">(</span><span class="n">foo</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">foo</span><span class="p">)</span>
+    <span class="c1"># &#39;foo&#39; 출력</span>
+</code></pre></div>
+
+<p>conftest.py파일을 root directory에 지정 시 해당 파일 내 모든 hook이나 fixture는 모든 테스트에 적용됩니다. hook function에 관한 내용은 아래 설명 참고 바랍니다.</p>
+<p><strong>autouse</strong>:</p>
+<p>autouse는 fixture를 reference할 수 있는 모든 test에 별도 각각 명시할 필요 없이 자동으로 적용됩니다.</p>
+<p>conftest.py에 명시된 fixture에 autouse=True할 시 해당 디렉토리 내 모든 테스트에는 그 fixture가 자동 적용됩니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: tests/conftest.py</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: tests/app/test_app.py</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_bar</span><span class="p">():</span>
+    <span class="c1"># 여기서 &#39;foo&#39; 출력</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;bar&#39;</span><span class="p">)</span>
+    <span class="c1"># &#39;bar&#39; 출력</span>
+</code></pre></div>
+
+<p>scope이 session이고 autouse=True 일시 모든 접근가능한 테스트에 해당 fixture가 자동 적용되면서 공유되어 singleton 같은 효과를 얻을 수 있습니다. 단 database관련 singleton화는 transaction에 의해 영향을 받아  이슈가 발생할 수 있습니다(test와 transaction관련은 아래 참고).</p>
+<h3>mark</h3>
+<p>pytest.mark기능은 테스트에 커스텀 특징을 설정할 수 있습니다.</p>
+<p><strong>pytest.mark.usefixtures:</strong> </p>
+<p>parameter사용하지 않고 fixture를 테스트에 적용 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="s1">&#39;foo&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_bar</span><span class="p">():</span>
+    <span class="c1"># foo fixture starts here</span>
+    <span class="o">...</span>
+</code></pre></div>
+
+<p><strong>pytest.mark.skip:</strong></p>
+<p>테스트코드를 유지한체 실행 시 테스트를 생략할 수 있습니다</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s1">&#39;호환성 이슈&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_foo</span><span class="p">():</span>
+    <span class="c1"># skipped during test run</span>
+    <span class="o">...</span>
+</code></pre></div>
+
+<p><strong>pytest.mark.parametrize:</strong></p>
+<p>동일 테스트를 다른 파라미터 조건으로 테스트 케이스 생성이 가능합니다</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span>
+        <span class="p">(</span><span class="s1">&#39;cond&#39;</span><span class="p">,</span> <span class="s1">&#39;expected&#39;</span><span class="p">),</span>
+        <span class="p">[(</span><span class="kc">True</span><span class="p">,</span> <span class="kc">True</span><span class="p">),</span> <span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="kc">False</span><span class="p">)])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_always_true</span><span class="p">(</span><span class="n">cond</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="c1"># True == True 와 False == False 두 테스트가 실행 됨</span>
+    <span class="k">assert</span> <span class="n">cond</span> <span class="o">==</span> <span class="n">expected</span>
+</code></pre></div>
+
+<p><strong>pytest.mark.django_db:</strong></p>
+<p>django ORM을 접근하기 위해 필요한 mark입니다. pytest-django pakcage의 커스텀 mark입니다.</p>
+<p>pytest와 database관련해서는 아래 참고 바람</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_user</span><span class="p">():</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">MedicalStaffFactory</span><span class="p">()</span>
+    <span class="n">user</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</code></pre></div>
+
+<h3>assert</h3>
+<p>테스트 함수 내 동작결과가 원하게 동작했는지 실패처리해야할 지를 명시하는 방법입니다.</p>
+<p><strong>기본사용법</strong></p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">test_foo</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="kc">True</span> <span class="ow">is</span> <span class="kc">True</span>    <span class="c1"># 성공</span>
+    <span class="k">assert</span> <span class="kc">True</span> <span class="ow">is</span> <span class="kc">False</span>   <span class="c1"># 실패, test run에서 실패 및 error message</span>
+    <span class="k">assert</span> <span class="kc">True</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;reason here&#39;</span>
+</code></pre></div>
+
+<p><strong>exception</strong></p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">test_exception</span><span class="p">():</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">KeyError</span><span class="p">):</span>  <span class="c1"># 성공</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">d</span><span class="p">[</span><span class="s1">&#39;a&#39;</span><span class="p">]</span>
+</code></pre></div>
+
+<h3>mocker</h3>
+<p>mocker는 테스트 시 일부 모듈이나 3rd party라이브러리의 행위를 조종할 수 있게 합니다.</p>
+<p>복잡한 내부 로직을 생략하거나, 호출되면 안되는(예시: twilo API 호출) 3rd party 라이브러리를 실제로 호출하지 않고 호출 된걸로 간주하게 하여 기존 코드 수정없이 해당 로직을 테스트 할 수 있습니다.</p>
+<p>mocker는 반환값을 변환시키거나, 입력값이 무엇인지 알 수 있고, 호출여부, 호출개수 도 알 수 있습니다.</p>
+<p>pytest의 기본 mock기능 도 있지만 여기서는 pytest-mocker 패키지의 mocker라는 fixture를 사용합니다.</p>
+<p><strong>return 값 변경:</strong></p>
+<p>아래처럼 지정 모듈의 클라스, 함수까지 반환값을 변환 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: myapp/tests/test_serializers.py</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_check_token_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">mocker</span><span class="p">):</span>
+    <span class="n">uid_b64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">urlsafe_b64encode</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+    <span class="n">token</span> <span class="o">=</span> <span class="n">TokenGenerator</span><span class="p">()</span><span class="o">.</span><span class="n">make_token</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+    <span class="n">serializer</span> <span class="o">=</span> <span class="n">PasswordResetSerializer</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;password&#39;</span><span class="p">:</span> <span class="s1">&#39;newpassword&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;token&#39;</span><span class="p">:</span> <span class="n">token</span><span class="p">,</span>
+        <span class="s1">&#39;uid_b64&#39;</span><span class="p">:</span> <span class="n">uid_b64</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="n">mocker</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;myapp.serializers.TokenGenerator.check_token&#39;</span><span class="p">,</span> <span class="n">return_value</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="n">AuthenticationError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">raise_exception</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;The reset link is invalid&#39;</span>
+    <span class="k">assert</span> <span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="mi">401</span>
+
+<span class="c1"># 위치: myapp/serializers.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">some_library.tokens</span><span class="w"> </span><span class="kn">import</span> <span class="n">TokenGenerator</span>  <span class="c1"># 이거를 mock</span>
+<span class="o">...</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PasswordResetSerializer</span><span class="p">(</span><span class="n">serializers</span><span class="o">.</span><span class="n">Serializer</span><span class="p">):</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attr</span><span class="p">):</span>
+        <span class="o">...</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">TokenGenerator</span><span class="p">()</span><span class="o">.</span><span class="n">check_token</span><span class="p">(</span><span class="n">user</span><span class="p">,</span> <span class="n">token</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">AuthenticationError</span><span class="p">(</span><span class="s1">&#39;The reset link is invalid&#39;</span><span class="p">,</span> <span class="mi">401</span><span class="p">)</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<p><strong>함수 호출정보 확인:</strong></p>
+<p>아래 처럼 지정 함수의 호출여부와 어떤 파라미터가 입력 됐는지도 확인 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: myapp/tests/test_views.py</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span><span class="p">()</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="s1">&#39;auth_token&#39;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestResetEmailWithTokenView</span><span class="p">:</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_reset_email_with_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">api_client</span><span class="p">,</span> <span class="n">mocker</span><span class="p">):</span>
+
+        <span class="c1"># 테스트 데이터 설정</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="n">reverse</span><span class="p">(</span><span class="s1">&#39;reset-email-with-token&#39;</span><span class="p">)</span>
+        <span class="n">acc_token</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">generate_new_tokens</span><span class="p">(</span><span class="s1">&#39;web-client&#39;</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;Bearer </span><span class="si">{</span><span class="n">acc_token</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">}</span>
+
+        <span class="n">mock_serializer</span> <span class="o">=</span> <span class="n">mocker</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;myapp.views.ResetEmailWithTokenView.serializer_class&#39;</span><span class="p">)</span>
+        <span class="n">mock_serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">mock_serializer</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># 요청 전송</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="n">api_client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="p">{},</span> <span class="o">**</span><span class="n">headers</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">resp</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="n">status</span><span class="o">.</span><span class="n">HTTP_200_OK</span>
+
+        <span class="c1"># is_valid 파라미터 확인</span>
+        <span class="k">assert</span> <span class="n">mock_serializer</span><span class="o">.</span><span class="n">call_count</span> <span class="o">==</span> <span class="mi">1</span>
+        <span class="k">assert</span> <span class="n">mock_serializer</span><span class="o">.</span><span class="n">call_args</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;context&#39;</span><span class="p">][</span><span class="s1">&#39;request&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">user</span> <span class="o">==</span> <span class="n">user</span>
+
+<span class="c1"># 위치: myapp/views.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ResetEmailWithTokenView</span><span class="p">(</span><span class="n">generics</span><span class="o">.</span><span class="n">GenericAPIView</span><span class="p">):</span>
+    <span class="n">serializer_class</span> <span class="o">=</span> <span class="n">ResetEmailWithTokenSerializer</span>
+    <span class="n">renderer_classes</span> <span class="o">=</span> <span class="p">(</span><span class="n">CustomResultRenderer</span><span class="p">,</span> <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">post</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="n">serializer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">serializer_class</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span>
+        <span class="n">serializer</span><span class="o">.</span><span class="n">is_valid</span><span class="p">(</span><span class="n">raise_exception</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">serializer</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_200_OK</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>unittest와의 호환성</h3>
+<p>pytest는 기본적으로 python unittest, nose 테스트가 100% 호환됩니다. 테스트 작성을 unittest 사용하고 싶으시면 가능합니다.</p>
+<h3>테스트 discovery</h3>
+<p>pytest는 설정으로 테스트 함수를 자동으로 찾게 됩니다.</p>
+<p>여기서는 <code>pytest.ini</code>파일에 기본설정이 있고 pytest도 참고하게 됩니다.</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="n">pytest</span><span class="p">]</span>
+<span class="n">DJANGO_SETTINGS_MODULE</span><span class="o">=</span><span class="n">myapp</span><span class="o">.</span><span class="n">settings</span>
+<span class="n">addopts</span> <span class="o">=</span> <span class="o">--</span><span class="n">reuse</span><span class="o">-</span><span class="n">db</span> <span class="o">--</span><span class="n">disable</span><span class="o">-</span><span class="n">warnings</span> <span class="o">--</span><span class="n">nomigrations</span>
+<span class="n">python_files</span> <span class="o">=</span> <span class="n">test</span><span class="o">*.</span><span class="n">py</span>
+<span class="n">python_functions</span> <span class="o">=</span> <span class="n">test</span><span class="o">*</span>
+</code></pre></div>
+
+<p>기본 설정으로는 <code>test*.py</code> 패턴의 파일명 모듈을 자동으로 찾습니다.</p>
+<p>pytest 기본값으로 <code>Test*</code> 패턴의 class를 찾거나 설정으로 <code>test*</code> 패턴의 함수를 찾습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: myapp/tests/test_serializers.py</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestTokenAuthenticationSerializer</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_validate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="p">):</span>
+        <span class="o">...</span>
+</code></pre></div>
+
+<h3>reference</h3>
+<p>최대한 구현된 테스트 범위로 설명을 국한했습니다.</p>
+<p>더 자세한 사용법은 <a href="https://docs.pytest.org/en/latest/index.html">공식문서</a> 참고 부탁드립니다.</p>
+<h2>🗄️Django와 database관련</h2>
+<p>django의 기능을 pytest서 사용하여 테스트하기 위해 <code>pytest-django</code> 패키지를 사용합니다.</p>
+<p>django ORM을 사용하기 위해서는 django test에서는 기본으로 test database를 생성하여 default database와 분리하게 됩니다.</p>
+<p><img alt="pytest서 생성된 test_*****_local schema" src="../images/python_unittest/Untitled.png"></p>
+<p>pytest서 생성된 test_<strong>*</strong>_local schema</p>
+<p>모든 django database관련 테스트는 transaction이 걸리게 됩니다.</p>
+<p>test function 혹은 class, module 마다 transaction이 rollback(혹은 trauncate) 되며
+다른 테스트와 isolation을 지원합니다.</p>
+<p>django ORM사용 테스트는 아래 mark를 적용해야 동작합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 함수에 django_db 적용</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_foo</span><span class="p">():</span>
+    <span class="c1"># some database access here</span>
+  <span class="o">...</span>
+
+<span class="c1"># class에 django_db 적용</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestCase1</span><span class="p">:</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">test_foo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+                <span class="n">passs</span>
+</code></pre></div>
+
+<div class="highlight"><pre><span></span><code><span class="c1"># 모듈 전체 django_db 적용</span>
+<span class="n">pytestmark</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+
+<span class="c1"># test code here</span>
+<span class="o">...</span>
+</code></pre></div>
+
+<h3>기본 실행 설정</h3>
+<p>아래 처럼 디비관련 기본 실행 옵션은 <code>—-reuse-db —-nomigrations</code>입니다.</p>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="n">pytest</span><span class="p">]</span>
+<span class="n">DJANGO_SETTINGS_MODULE</span><span class="o">=</span><span class="n">myapp</span><span class="o">.</span><span class="n">settings</span>
+<span class="n">addopts</span> <span class="o">=</span> <span class="o">--</span><span class="n">reuse</span><span class="o">-</span><span class="n">db</span> <span class="o">--</span><span class="n">disable</span><span class="o">-</span><span class="n">warnings</span> <span class="o">--</span><span class="n">nomigrations</span>
+<span class="n">python_files</span> <span class="o">=</span> <span class="n">test</span><span class="o">*.</span><span class="n">py</span>
+<span class="n">python_functions</span> <span class="o">=</span> <span class="n">test</span><span class="o">*</span>
+</code></pre></div>
+
+<p>속도 때문에 test디비를 매번 재생성, 마이그레이션 하지 않고 재사용하고 있습니다.</p>
+<p>혹시 테스트 중 데이터베이스에 남은 데이터가 있어 충돌이 나거나, 마이그레이션에 문제가 있을 경우, 혹은 새로 추가 된 마이그레이션을 적용 하기 위해서는  아래 명령어로 디비 재생성이 필요합니다.</p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>pytest<span class="w"> </span>--create-db<span class="w"> </span>--migrations
+</code></pre></div>
+
+<h2>🪨Custom Fixtures</h2>
+<h3>mem_cache : fixture</h3>
+<p>pytest(or unittest)는 cache isolation을 지원하지 않습니다. 즉 redis가 동일하게 사용됩니다.</p>
+<p>pytest hook으로 테스트 실행 시 모든 redis 케시를 지우긴 하지만 테스트 간에 케시가 자동으로 원복되지 않기 때문에 테스트에서 생성 된 케시로 인해 다른 테스트에서 단독 실행 시 문제없던 코드가 같이 돌릴 시 예상치 못한 이슈를 발생하게 됩니다.</p>
+<p>이를 방지 하기 위해서 in-memory cache를 사용해 isolation을 구축하였습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 위치: myapp/tests/fixtures.py</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">()</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mem_cache</span><span class="p">():</span>    <span class="c1"># noqa</span>
+    <span class="c1"># in-memory cache to isolate cache between tests</span>
+    <span class="c1"># also isolates cache between processes, due to it allows one process to access the cache at a time</span>
+    <span class="k">with</span> <span class="n">override_settings</span><span class="p">(</span><span class="n">CACHES</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;default&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;BACKEND&#39;</span><span class="p">:</span> <span class="s1">&#39;django.core.cache.backends.locmem.LocMemCache&#39;</span><span class="p">}}):</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="k">yield</span>
+        <span class="n">cache</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+<span class="c1"># 위치: myapp/tests/test_models.py</span>
+
+<span class="c1"># using in-memory cache to isolate cache between tests</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span><span class="p">()</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="s1">&#39;mem_cache&#39;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TestMyModel</span><span class="p">:</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">test_cache_key_generation</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Create an instance of the model</span>
+        <span class="n">my_instance</span> <span class="o">=</span> <span class="n">MyModelFactory</span><span class="p">()</span>
+
+        <span class="c1"># Cache key</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;cache_key_prefix:model:</span><span class="si">{</span><span class="n">my_instance</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="c1"># Assert that the cache key is set correctly</span>
+        <span class="k">assert</span> <span class="n">my_instance</span><span class="o">.</span><span class="n">cache_key</span> <span class="o">==</span> <span class="n">key</span>
+</code></pre></div>
+
+<p>위 예제 처럼, 케시를 사용하는 테스트 케이스들은 <code>mem_cache</code> fixutre를 사용하는걸 권장합니다.</p>
+<p>redis 기능이 꼭 필요하다면 테스트 전 후 로 매번 clear를 해주시길 바랍니다.</p>
+<h2>👀code coverage</h2>
+<p>코드 커버리지란 테스트 코드가 커버하는 코드의 수치화를 말합니다. instrument tool로 테스트 진행 시 실행되는 코드를 기록합니다. 커버리지 방법에 따라 다른 기준으로 코드의 커버된 여부를 결정하게 되고, 보고로 커버된 코드의 줄 수를 수치로 확인 할 수 있습니다.</p>
+<p>이로 인해 테스트를 못한 코드가 어디인지 전체 코드 중 얼마나 테스트를 커버 못했는지 확인 할 수 있습니다.</p>
+<p><img alt="coverage 테스트 출력 예시" src="../images/python_unittest/Untitled%201.png"></p>
+<p>coverage 테스트 출력 예시</p>
+<p>코드 커버리지 방법론 중 가장 많이 사용되는 방법은 line coverage입니다. 코드 줄이 실행 될 경우 테스트가 됐다고 가정하는 것입니다.</p>
+<p>다른 방법론으로는 branch coverage입니다. condition이 있는 코드 중 모든 true false 조건이 다 실행되어야 해당 code block이 실행됐다고 가정하는 방법입니다.</p>
+<p>저희는 가장 기본으로 line coverage방법론을 사용하고 있습니다(pytest-coverage 기본값).</p>
+<p>추 후 커버리지가 충분히 올라오고, 좀 더 엄격한 기준을 적용할 수 있을 때 다른 커버리지 방법을 사용하는것을 권장합니다.</p>
+<p>ref: <a href="https://tecoble.techcourse.co.kr/post/2020-10-24-code-coverage/">https://tecoble.techcourse.co.kr/post/2020-10-24-code-coverage/</a></p>
+<h2>👥테스트 문화 및 정책</h2>
+<p>테스트 문화를 강화하기 위해 PR에 추가된 코드에 대한 테스트 케이스 작성을 필수화하고자 합니다. PR에 포함된 코드 변경 사항에 대해 테스트 케이스를 작성하거나 기존 테스트를 수정하여 점진적으로 테스트 커버리지를 늘리는 것을 목표로 합니다.</p>
+<p>GitHub Actions를 통해 모든 테스트를 통과한 경우에만 PR 병합을 허용하며, 이를 완전히 적용하기 위한 적응 기간을 정합니다.</p>
+<p>초기 커버리지 기준을 정하고, 점차 상향하여 전체 테스트 커버리지를 지속적으로 개선합니다.</p>
+<p>테스트 코드 작성이 누락된 경우, 코드 커버리지가 낮아져 모든 테스트가 통과하더라도 GitHub Actions에서 실패 처리되므로 자연스럽게 테스트 작성 문화를 장려할 수 있습니다.</p>
+<h2>🏃실행방법</h2>
+<h3>Prerequisite</h3>
+<p>테스트 디비를 생성하기 때문에 디비 user의 권한설정이 필요합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="o">&gt;</span><span class="w"> </span><span class="k">GRANT</span><span class="w"> </span><span class="k">ALL</span><span class="w"> </span><span class="k">PRIVILEGES</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="o">*</span><span class="p">.</span><span class="o">*</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="s1">&#39;user&#39;</span><span class="o">@</span><span class="s1">&#39;%&#39;</span><span class="w"> </span><span class="k">WITH</span><span class="w"> </span><span class="k">GRANT</span><span class="w"> </span><span class="k">OPTION</span><span class="p">;</span><span class="w"> </span><span class="n">FLUSH</span><span class="w"> </span><span class="k">PRIVILEGES</span><span class="p">;</span>
+</code></pre></div>
+
+<p><code>requirements..txt</code> 설치</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements..txt
+</code></pre></div>
+
+<h3>기본 테스트</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># 기본 실행</span>
+pytest
+
+<span class="c1"># 특정 테스트 파일 실행</span>
+pytest<span class="w"> </span>myapp/tests/test_models.py
+pytest<span class="w"> </span>myapp/tests/test_views.py::TestTokenGeneration::test_token_generation_permission_check
+
+<span class="c1"># 멀티 프로세싱 적용</span>
+pytest<span class="w"> </span>-n<span class="w"> </span>auto
+</code></pre></div>
+
+<p>관련 설정파일</p>
+<ul>
+<li>pytest.ini</li>
+<li>myapp/settings/pytest.py</li>
+</ul>
+<p>기본 설정은 test 데이터베이스를 재사용한다.</p>
+<p>혹시 테스트 중 데이터베이스 남은데이터가 있어 충돌이 나거나, 마이그레이션에 문제가 있을 경우 혹은 새로 추가된 마이그레이션을 적용 하기 위해서는 아래 명령어로 다시 디비생성이 필요합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="err">$</span><span class="w"> </span><span class="n">pytest</span><span class="w"> </span><span class="c1">--create-db --migrations</span>
+</code></pre></div>
+
+<h3>커버리지 테스트</h3>
+<p>line coverage를 기준으로 합니다. 
+<a href="https://tecoble.techcourse.co.kr/post/2020-10-24-code-coverage/">코드 커버리지 관련브로그</a></p>
+<div class="highlight"><pre><span></span><code>#<span class="w"> </span>전체<span class="w"> </span>범위
+$<span class="w"> </span><span class="nv">pytest</span><span class="w"> </span><span class="o">--</span><span class="nv">cov</span><span class="o">=</span>.
+
+#<span class="w"> </span>테스트<span class="w"> </span>못한<span class="w"> </span>코드<span class="w"> </span>표시
+$<span class="w"> </span><span class="nv">pytest</span><span class="w"> </span><span class="o">--</span><span class="nv">cov</span><span class="o">-</span><span class="nv">report</span><span class="w"> </span><span class="nv">term</span><span class="o">-</span><span class="nv">missing</span><span class="w"> </span><span class="o">--</span><span class="nv">cov</span><span class="o">=</span>
+
+#<span class="w"> </span><span class="mi">80</span><span class="o">%</span><span class="w"> </span>커버리지<span class="w"> </span>이하<span class="w"> </span>시<span class="w"> </span><span class="k">exit</span><span class="w"> </span><span class="mi">1</span><span class="ss">(</span><span class="nv">fail</span><span class="ss">)</span>,<span class="w"> </span><span class="nv">CICD</span>에서<span class="w"> </span>많이<span class="w"> </span>사용
+$<span class="w"> </span><span class="nv">pytest</span><span class="w"> </span><span class="o">--</span><span class="nv">cov</span><span class="o">=</span>.<span class="w"> </span><span class="o">--</span><span class="nv">cov</span><span class="o">-</span><span class="nv">fail</span><span class="o">-</span><span class="nv">under</span><span class="o">=</span><span class="mi">80</span>
+</code></pre></div>
+
+<h2>⛓️Github Action(CI)</h2>
+<p>github action script로 특정 이벤트 트리거로 자동 테스트를 실행 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Python Tests</span>
+
+<span class="nt">on</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">push</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+<span class="w">  </span><span class="nt">pull_request</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">branches</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">main</span>
+
+<span class="nt">jobs</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">test</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">runs-on</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">ubuntu-latest</span>
+
+<span class="w">    </span><span class="nt">steps</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Checkout code</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/checkout@v3</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Set up Python</span>
+<span class="w">      </span><span class="nt">uses</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">actions/setup-python@v4</span>
+<span class="w">      </span><span class="nt">with</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">python-version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.9</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Install dependencies</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">python -m pip install --upgrade pip</span>
+<span class="w">        </span><span class="no">pip install -r requirements.txt</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Run tests with pytest</span>
+<span class="w">      </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">|</span>
+<span class="w">        </span><span class="no">pytest --cov=myapp --cov-report=xml</span>
+</code></pre></div>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/ci.html">CI</a></li>
+					<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+					<li><a href="https://is9117.github.io/tag/django.html">django</a></li>
+					<li><a href="https://is9117.github.io/tag/git.html">git</a></li>
+					<li><a href="https://is9117.github.io/tag/python.html">python</a></li>
+					<li><a href="https://is9117.github.io/tag/pytest.html">pytest</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>

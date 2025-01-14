@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="mysql 8.0 무중단 migration 방법" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/mysql-80-mujungdan-migration-bangbeob.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/database.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">mysql 8.0 무중단 migration 방법</h1>
+	<span class="post-date">Mon 22 July 2024</span>
+	<h2>배경</h2>
+<p>배포에서 디비 마이그레이션이 있을 때, 서비스에 장애발생 여부를 확인 하기 어려워 중단배포를 하는 경우가 있습니다.</p>
+<p>migration 시 일부 table lock이 발생하여 쿼리와 insert / update / delete 등 DML이 동작하지 않는 경우 서비스의 장애를 방생할 수 있습니다.</p>
+<p>다만 최신 RDBMS는 무중단 migration 기술을 지원합니다.</p>
+<p>실 서비스 중인 케어의 mysql 8.0을 기준으로 무중단 migration 기술소개와 동작원리, 중단, 무중단 마이그레이션 구분 방법 및 검증테스트 등 을 소개해드리려고 합니다.</p>
+<h2>배경기술</h2>
+<h3>SQL</h3>
+<p><code>DDL(Data Definition Language)</code>는 디비의 스키마를 정의, 수정, 삭제 등 관리 가능한 sql입니다. Table관련으로 <code>CREATE</code>, <code>ALTER</code>, <code>DROP</code>, <code>TRUNCATE</code> 등이 있습니다.</p>
+<p><code>DML(Data Manipulation Language)</code>는 디비의 table 내 개별 혹은 여러 row를 조회, 추가, 수정, 삭제 등 관리 가능한 sql입니다. <code>SELECT</code>, <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code> 등이 있습니다.</p>
+<p>DCL, TCL은 이번 범위가 아니여 넘어가겠습니다.</p>
+<h3>Table-Copy algorithm</h3>
+<p>이전 mysql 버전은 모든 DDL 동작에 table-copy algorithm을 사용했습니다. 이는 전체 table lock이 포함되며 table 데이터 크기에 따라 필요 시 수 시간의 시간이 소요 됩니다.</p>
+<p>기본 원리는 전체 DML을 막도록 table lock을 걸고 데이터를 새로운 테이블에 복사하여 DDL을 적용합니다. 그 후 새로운 테이블 데이터를 기존 테이블에 복사하게 됩니다.</p>
+<p>이 케이스가 중단배포의 가장 큰 원인이고 이를 줄이거나 없이 할 수 있다면 무중단 배포가 가능합니다.</p>
+<h3>Online DDL</h3>
+<p>mysql 8.0 InnoDB storage engine에서는 Online DDL이라는 기술을 지원합니다.</p>
+<p>Online DDL이란 <code>instance</code>, <code>in-place</code> 테이블 변경이 가능하고 <code>Concurrent DML</code>을 지원합니다.</p>
+<p>https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl.html</p>
+<p>위 공식 문서의 online DDL에 대한 특징을 설명한 문구입니다.</p>
+<ul>
+<li>테이블을 몇 분 또는 몇 시간 동안 사용할 수 없게 만드는 것이 실용적이지 않은 바쁜 생산 환경에서의 개선된 응답성과 가용성.</li>
+<li>실시간(in-place) 작업의 경우, LOCK 절을 사용하여 DDL 작업 중 성능과 동시성 사이의 균형을 조정할 수 있는 능력. 자세한 내용은 LOCK 절을 참조하십시오.</li>
+<li>copy-table 방법보다 적은 디스크 공간 사용 및 I/O 오버헤드.</li>
+</ul>
+<h3>DDL Algorithm</h3>
+<p><code>instance:</code></p>
+<p>instance DDL algorithm은 meta데이터만 변경합니다. 일부 SQL 혹은 조건이 맞는 경우에만 사용 가능합니다.</p>
+<p>실제 데이터를 건들지 않기때문에 말 그대로 “바로” DDL을 실행 할 수 있습니다.</p>
+<p>가능한 SQL과 조건은 아래에 자세한 설명으로 확인 하실 수 있습니다.</p>
+<p><code>in-place:</code></p>
+<p>in-place DDL algorithm이란 table copy 없이 최소한의 lock을 활용해 기존 구조를 유지하며 데이터를 수정하는 방법입니다.</p>
+<p>LOCK=NONE 시 (아래 참고) concurrent DML을 지원하게 되는데, 필요한 데이터만(one row, meta data) lock을 사용합니다. DML이 종료 시 lock을 풀어주는 방식을 사용합니다.</p>
+<p><code>copy:</code></p>
+<p>이전 설명 한 table-copy algorithm 입니다.</p>
+<h3>in-place DDL Lock</h3>
+<p>LOCK은 <code>in-place</code>으로 수행되는 작업에 사용될 수 있으며, 작업 중 테이블에 대한 동시 접근 정도를 미세 조정하는 데 유용합니다. </p>
+<p><code>instance</code> 수행되는 작업에는 LOCK=DEFAULT만 지원됩니다. ALGORITHM 절은 주로 성능 비교를 위해 사용되며, 문제가 발생할 경우 기존의 테이블 복사 방법으로 돌아가기 위한 대안으로 사용됩니다. 예를 들어:</p>
+<p>실시간 ALTER TABLE 작업 중에 테이블을 읽기, 쓰기 또는 둘 다 사용할 수 없게 만드는 실수를 피하려면 ALTER TABLE 문에 <strong>LOCK=NONE(읽기 및 쓰기 허용)</strong> 또는 LOCK=SHARED(읽기 허용)와 같은 절을 지정하십시오. 
+요청된 수준의 동시성이 사용 불가능한 경우 작업은 즉시 중단됩니다.</p>
+<h3>목표</h3>
+<p>무중단 배포, lock free DDL을 실행하기 위하여 아래의 조건을 만족시켜야 됩니다.</p>
+<ul>
+<li>instance DDL algorithm 사용</li>
+<li>in-place DDL algorithm &amp;&amp; LOCK=NONE 사용</li>
+</ul>
+<h2>확인방법</h2>
+<p>일반적으로 온라인 DDL을 활성화하기 위해 특별한 조치를 취할 필요는 없습니다. 기본적으로 MySQL은 가능한 최소한의 <code>LOCK</code>으로 <code>instance</code>이거나 <code>in-place</code>으로 작업을 수행합니다.</p>
+<p>DDL 작업의 측면을 제어하려면 ALTER TABLE 문에서 ALGORITHM 및 LOCK 절을 사용할 수 있습니다. 이 절들은 테이블 및 열 지정에서 쉼표로 구분하여 문장의 끝에 배치됩니다. 예를 들어:</p>
+<div class="highlight"><pre><span></span><code><span class="k">ALTER</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">tbl_name</span><span class="w"> </span><span class="k">ADD</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="k">column</span><span class="p">),</span><span class="w"> </span><span class="n">ALGORITHM</span><span class="o">=</span><span class="n">INPLACE</span><span class="p">,</span><span class="w"> </span><span class="k">LOCK</span><span class="o">=</span><span class="k">NONE</span><span class="p">;</span>
+</code></pre></div>
+
+<p><strong>서비스 영향을 최소화하면서 가능한 알고리즘을 확인해 보는 방법:</strong></p>
+<ol>
+<li>ALGORITHM=INSTANT 옵션으로 스키마 변경을 시도</li>
+<li>실패하면 ALGORITHM=INPLACE, LOCK=NONE 옵션으로 스키마 변경을 시도</li>
+<li>실패하면 ALGORITHM=INPLACE, LOCK=SHARED 옵션으로 스키마 변경을 시도</li>
+<li>실패하면 ALGORITHM=COPY, LOCK=SHARED 옵션으로 스키마 변경을 시도</li>
+<li>실패하면 ALGORITHM=COPY, LOCK=EXCLUSIVE 옵션으로 스키마 변경을 시도</li>
+</ol>
+<p><strong>&gt;&gt; 1, 2번으로 되지 않는다면 DML을 멈춘 다음 스키마 변경을 해야 하는 작업임.</strong></p>
+<p><a href="https://blog.bespinglobal.com/post/mysql-online-ddl-%EB%B3%84-%EC%A0%81%EC%9A%A9-%EA%B0%80%EB%8A%A5%ED%95%9C-%EC%95%8C%EA%B3%A0%EB%A6%AC%EC%A6%98-8-0-%EC%9D%B4%EC%83%81/">[blog.bespinglobal.com/post/mysql-online-ddl-별-적용-가능한-알고리즘-8-0-이상]</a></p>
+<p><strong>아래 링크에서 정리 된 table로 확인 할 수 도 있습니다:</strong></p>
+<p>https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html</p>
+<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled.png"></p>
+<p>예시로 <strong>adding column DDL</strong>은 최악으로 <code>in-place</code>, <code>lock=NONE(permits concurrent DML)</code>인 것을 확인 할 수 있습니다.</p>
+<p>주의할 점은 adding column DDL의 rebuilds table 예외는 아래와 같습니다.</p>
+<ul>
+<li><strong>Changing the Data Type</strong>: If the column addition involves a data type change that affects the physical storage format.</li>
+<li><strong>Column Position</strong>: If the column is added at a specific position other than the end, especially in older versions before MySQL 8.0.29.</li>
+<li><strong>Row Format</strong>: If the table uses <code>ROW_FORMAT=COMPRESSED</code>.</li>
+<li><strong>Space Limitations</strong>: If the addition exceeds the maximum row size limits.</li>
+</ul>
+<p>가장 처음의 table physical storage format들은 아래와 같습니다.</p>
+<ul>
+<li><strong>Compact</strong>: Stores data compactly, minimizing storage usage.</li>
+<li><strong>Redundant</strong>: Legacy format, uses more storage.</li>
+<li><strong>Dynamic</strong>: Stores variable-length columns efficiently.</li>
+<li><strong>Compressed</strong>: Compresses data for storage efficiency.</li>
+</ul>
+<h2>django단 확인</h2>
+<p><code>sqlmigration</code> 장고커멘드로 마이그레이션 시 실행되는 SQL을 확인 할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="o">(</span>venv<span class="o">)</span><span class="w"> </span>isaacpark@Isaacui-MacBookPro<span class="w"> </span>memo-service-backend<span class="w"> </span>%<span class="w"> </span>./manage.py<span class="w"> </span>sqlmigrate<span class="w"> </span>ecg<span class="w"> </span><span class="m">0059</span>
+Invalid<span class="w"> </span>line:<span class="w"> </span><span class="nv">LOG_LEVEL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DEBUG
+<span class="w">  </span>___<span class="w"> </span>___<span class="w">      </span>__<span class="w">    </span>___<span class="w"> </span>___<span class="w">     </span>___<span class="w">   </span>
+/<span class="s1">&#39; __` __`\  /&#39;</span>__<span class="sb">`</span><span class="se">\/</span><span class="err">&#39;</span><span class="w"> </span>__<span class="sb">`</span><span class="w"> </span>__<span class="sb">`</span><span class="se">\ </span><span class="w"> </span>/<span class="w"> </span>__<span class="sb">`</span><span class="se">\ </span>
+/<span class="se">\ \/\ \/\ \/\ </span><span class="w"> </span>__//<span class="se">\ \/\ \/\ \/\ \L\ \ </span>
+<span class="se">\ \_\ \_\ \_\ \_</span>___<span class="se">\ \_\ \_\ \_\ \_</span>___/
+<span class="w"> </span><span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>____/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>___/<span class="w"> </span>
+
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Current<span class="w"> </span>Secret<span class="w"> </span>ID:<span class="w"> </span><span class="o">[</span>memo-care-backend-secret-env<span class="o">]</span>
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Current<span class="w"> </span>ENV<span class="w"> </span>file:<span class="w"> </span><span class="o">[</span>.env.isaacpark<span class="o">]</span>
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>AWS<span class="w"> </span>ENV:<span class="w"> </span>prod<span class="w"> </span><span class="p">|</span><span class="w"> </span>IAM:<span class="w"> </span>isaac.park+prod@huinno.com
+
+--
+--<span class="w"> </span>Alter<span class="w"> </span>field<span class="w"> </span>cloud_status<span class="w"> </span>on<span class="w"> </span>ecgtest
+--
+ALTER<span class="w"> </span>TABLE<span class="w"> </span><span class="sb">`</span>ecg_ecgtest<span class="sb">`</span><span class="w"> </span>MODIFY<span class="w"> </span><span class="sb">`</span>cloud_status<span class="sb">`</span><span class="w"> </span>integer<span class="w"> </span>NOT<span class="w"> </span>NULL<span class="p">;</span>
+</code></pre></div>
+
+<h2>검증 테스트</h2>
+<p>mysq 8.0.32(prod 버전) docker compose 실행</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Docker compose file of mysql 8.0.32</span>
+<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;3.8&#39;</span>
+<span class="nt">services</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">mysql</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mysql:8.0.32</span>
+<span class="w">    </span><span class="nt">ports</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3306:3306</span>
+<span class="w">    </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MYSQL_ROOT_PASSWORD=secret</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MYSQL_DATABASE=mydb</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MYSQL_USER=myuser</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">MYSQL_PASSWORD=mypassword</span>
+</code></pre></div>
+
+<p>기본 table 생성</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- create a table named TEST, with column A, B, C all int dafault 0</span>
+<span class="c1">-- on database mydb</span>
+<span class="n">USE</span><span class="w"> </span><span class="n">mydb</span><span class="p">;</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">TEST</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">id</span><span class="w"> </span><span class="nb">INT</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="n">AUTO_INCREMENT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">A</span><span class="w"> </span><span class="nb">INT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="n">B</span><span class="w"> </span><span class="nb">INT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">    </span><span class="k">C</span><span class="w"> </span><span class="nb">INT</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="mi">0</span>
+<span class="p">);</span>
+</code></pre></div>
+
+<p>테스트 데이터 추가</p>
+<div class="highlight"><pre><span></span><code><span class="ch">#!/bin/bash</span>
+
+<span class="c1"># Insert 200,000 rows into the TEST table</span>
+<span class="k">for</span><span class="w"> </span>n<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">{</span><span class="m">1</span>..200000<span class="o">}</span><span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span>
+<span class="w">    </span><span class="nb">printf</span><span class="w"> </span><span class="s2">&quot;INSERT INTO TEST (A, B, C) VALUES (%d, %d, %d);\n&quot;</span><span class="w"> </span><span class="nv">$n</span><span class="w"> </span><span class="nv">$n</span><span class="w"> </span><span class="nv">$n</span><span class="p">;</span><span class="w"> </span>
+<span class="k">done</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>mysql<span class="w"> </span>-h<span class="w"> </span><span class="m">127</span>.0.0.1<span class="w"> </span>-P<span class="w"> </span><span class="m">3306</span><span class="w"> </span>-u<span class="w"> </span>root<span class="w"> </span>-p<span class="w"> </span>--init-command<span class="o">=</span><span class="s2">&quot;USE mydb; SET sql_log_bin=off; SET GLOBAL innodb_flush_log_at_trx_commit=0;&quot;</span>
+</code></pre></div>
+
+<p>DML 테스트 코드</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">mysql.connector</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="c1"># Database configuration</span>
+<span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="s1">&#39;root&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;password&#39;</span><span class="p">:</span> <span class="s1">&#39;secret&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;host&#39;</span><span class="p">:</span> <span class="s1">&#39;127.0.0.1&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;database&#39;</span><span class="p">:</span> <span class="s1">&#39;mydb&#39;</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="c1"># Function to perform random DML operations</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">perform_dml_operations</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">mysql</span><span class="o">.</span><span class="n">connector</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">operation</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s1">&#39;insert&#39;</span><span class="p">,</span> <span class="s1">&#39;update&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">operation</span> <span class="o">==</span> <span class="s1">&#39;insert&#39;</span><span class="p">:</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO TEST (A, B, C, D, E) VALUES (</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">)&quot;</span><span class="p">,</span> 
+                               <span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)))</span>
+            <span class="k">elif</span> <span class="n">operation</span> <span class="o">==</span> <span class="s1">&#39;update&#39;</span><span class="p">:</span>
+                <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;UPDATE TEST SET A = </span><span class="si">%s</span><span class="s2">, B = </span><span class="si">%s</span><span class="s2">, C = </span><span class="si">%s</span><span class="s2">, D = </span><span class="si">%s</span><span class="s2">, E = </span><span class="si">%s</span><span class="s2"> WHERE id = </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> 
+                            <span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">800_000</span><span class="p">)))</span>
+            <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">operation</span><span class="si">}</span><span class="s1"> operation completed&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+    <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="c1"># Function to perform the DDL operation</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">perform_ddl_operation</span><span class="p">():</span>
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">mysql</span><span class="o">.</span><span class="n">connector</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="o">**</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">cursor</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+    <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;ALTER TABLE TEST ADD COLUMN D INT DEFAULT 0, ALGORITHM=INPLACE, LOCK=NONE&quot;</span><span class="p">)</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="c1"># Create threads for DML operations</span>
+<span class="n">dml_threads</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>  <span class="c1"># Number of concurrent DML threads</span>
+    <span class="n">thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">perform_dml_operations</span><span class="p">)</span>
+    <span class="n">thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+    <span class="n">dml_threads</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">thread</span><span class="p">)</span>
+
+<span class="c1"># Perform the DDL operation</span>
+<span class="n">perform_ddl_operation</span><span class="p">()</span>
+
+<span class="c1"># Wait for DML threads to complete (optional)</span>
+<span class="k">for</span> <span class="n">thread</span> <span class="ow">in</span> <span class="n">dml_threads</span><span class="p">:</span>
+    <span class="n">thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+</code></pre></div>
+
+<p>테스트 데이터 개수</p>
+<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%201.png"></p>
+<p>DDL 실행 시 소요시간</p>
+<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%202.png"></p>
+<p>DDL 실행 시 DML 스크립트 로그:</p>
+<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%203.png"></p>
+<h2>한계 및 대안</h2>
+<p>https://medium.com/daangn/mysql-online-ddl-faf47439084c 블로그에서 언급한 것 과 같이 간단한 DDL은 online DDL로 가능하지만, foreign key, index, primary key 등 변경이 큰 DDL같은 경우 불가능 한 경우가 있습니다. 이런 경우 <code>pt-online-schema-change</code>란 percona사의 마이그레이션 툴을 사용방법이 있습니다.</p>
+<p><code>pt-online-schema-change</code>는 MySQL 테이블에 비차단 방식으로 스키마 변경을 적용하는 Percona Toolkit의 도구입니다. 이 도구는 원하는 변경 사항이 포함된 새 테이블을 생성하고, 데이터를 원본 테이블에서 새 테이블로 청크 단위로 복사한 후 테이블을 교체합니다. 동적 청크 크기 조정을 지원하여 서버 성능에 미치는 영향을 최소화하고, 동시 접근 및 부하를 관리하는 옵션을 포함합니다. 이를 통해 다운타임을 줄이고 스키마 수정 동안 데이터 무결성을 유지합니다.</p>
+<h2>Reference</h2>
+<ul>
+<li>https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html</li>
+<li>https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl.html</li>
+<li>https://medium.com/daangn/mysql-online-ddl-faf47439084c</li>
+<li>https://medium.com/practo-engineering/mysql-zero-downtime-schema-update-without-algorithm-inplace-fd427ec5b681</li>
+<li>https://blog.bespinglobal.com/post/mysql-online-ddl-별-적용-가능한-알고리즘-8-0-이상/</li>
+</ul>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+					<li><a href="https://is9117.github.io/tag/database.html">database</a></li>
+					<li><a href="https://is9117.github.io/tag/django.html">django</a></li>
+					<li><a href="https://is9117.github.io/tag/migration.html">migration</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>
