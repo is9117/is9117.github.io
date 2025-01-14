@@ -130,7 +130,7 @@
 <p><a href="https://blog.bespinglobal.com/post/mysql-online-ddl-%EB%B3%84-%EC%A0%81%EC%9A%A9-%EA%B0%80%EB%8A%A5%ED%95%9C-%EC%95%8C%EA%B3%A0%EB%A6%AC%EC%A6%98-8-0-%EC%9D%B4%EC%83%81/">[blog.bespinglobal.com/post/mysql-online-ddl-별-적용-가능한-알고리즘-8-0-이상]</a></p>
 <p><strong>아래 링크에서 정리 된 table로 확인 할 수 도 있습니다:</strong></p>
 <p>https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html</p>
-<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled.png"></p>
+<p><img alt="Untitled" src="../images/mysql_8_migration/Untitled.png"></p>
 <p>예시로 <strong>adding column DDL</strong>은 최악으로 <code>in-place</code>, <code>lock=NONE(permits concurrent DML)</code>인 것을 확인 할 수 있습니다.</p>
 <p>주의할 점은 adding column DDL의 rebuilds table 예외는 아래와 같습니다.</p>
 <ul>
@@ -150,20 +150,15 @@
 <p><code>sqlmigration</code> 장고커멘드로 마이그레이션 시 실행되는 SQL을 확인 할 수 있습니다.</p>
 <div class="highlight"><pre><span></span><code><span class="o">(</span>venv<span class="o">)</span><span class="w"> </span>isaacpark@Isaacui-MacBookPro<span class="w"> </span>memo-service-backend<span class="w"> </span>%<span class="w"> </span>./manage.py<span class="w"> </span>sqlmigrate<span class="w"> </span>ecg<span class="w"> </span><span class="m">0059</span>
 Invalid<span class="w"> </span>line:<span class="w"> </span><span class="nv">LOG_LEVEL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DEBUG
-<span class="w">  </span>___<span class="w"> </span>___<span class="w">      </span>__<span class="w">    </span>___<span class="w"> </span>___<span class="w">     </span>___<span class="w">   </span>
-/<span class="s1">&#39; __` __`\  /&#39;</span>__<span class="sb">`</span><span class="se">\/</span><span class="err">&#39;</span><span class="w"> </span>__<span class="sb">`</span><span class="w"> </span>__<span class="sb">`</span><span class="se">\ </span><span class="w"> </span>/<span class="w"> </span>__<span class="sb">`</span><span class="se">\ </span>
-/<span class="se">\ \/\ \/\ \/\ </span><span class="w"> </span>__//<span class="se">\ \/\ \/\ \/\ \L\ \ </span>
-<span class="se">\ \_\ \_\ \_\ \_</span>___<span class="se">\ \_\ \_\ \_\ \_</span>___/
-<span class="w"> </span><span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>____/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>_/<span class="se">\/</span>___/<span class="w"> </span>
 
-<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Current<span class="w"> </span>Secret<span class="w"> </span>ID:<span class="w"> </span><span class="o">[</span>memo-care-backend-secret-env<span class="o">]</span>
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Current<span class="w"> </span>Secret<span class="w"> </span>ID:<span class="w"> </span><span class="o">[</span>********-env<span class="o">]</span>
 <span class="o">[</span>*<span class="o">]</span><span class="w"> </span>Current<span class="w"> </span>ENV<span class="w"> </span>file:<span class="w"> </span><span class="o">[</span>.env.isaacpark<span class="o">]</span>
-<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>AWS<span class="w"> </span>ENV:<span class="w"> </span>prod<span class="w"> </span><span class="p">|</span><span class="w"> </span>IAM:<span class="w"> </span>isaac.park+prod@huinno.com
+<span class="o">[</span>*<span class="o">]</span><span class="w"> </span>AWS<span class="w"> </span>ENV:<span class="w"> </span>prod<span class="w"> </span><span class="p">|</span><span class="w"> </span>IAM:<span class="w"> </span>isaac.park+prod@*****.com
 
 --
 --<span class="w"> </span>Alter<span class="w"> </span>field<span class="w"> </span>cloud_status<span class="w"> </span>on<span class="w"> </span>ecgtest
 --
-ALTER<span class="w"> </span>TABLE<span class="w"> </span><span class="sb">`</span>ecg_ecgtest<span class="sb">`</span><span class="w"> </span>MODIFY<span class="w"> </span><span class="sb">`</span>cloud_status<span class="sb">`</span><span class="w"> </span>integer<span class="w"> </span>NOT<span class="w"> </span>NULL<span class="p">;</span>
+ALTER<span class="w"> </span>TABLE<span class="w"> </span><span class="sb">`</span>******<span class="sb">`</span><span class="w"> </span>MODIFY<span class="w"> </span><span class="sb">`</span>*****<span class="sb">`</span><span class="w"> </span>integer<span class="w"> </span>NOT<span class="w"> </span>NULL<span class="p">;</span>
 </code></pre></div>
 
 <h2>검증 테스트</h2>
@@ -263,11 +258,11 @@ ALTER<span class="w"> </span>TABLE<span class="w"> </span><span class="sb">`</sp
 </code></pre></div>
 
 <p>테스트 데이터 개수</p>
-<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%201.png"></p>
+<p><img alt="Untitled" src="../images/mysql_8_migration/Untitled%201.png"></p>
 <p>DDL 실행 시 소요시간</p>
-<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%202.png"></p>
+<p><img alt="Untitled" src="../images/mysql_8_migration/Untitled%202.png"></p>
 <p>DDL 실행 시 DML 스크립트 로그:</p>
-<p><img alt="Untitled" src="%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%203.png"></p>
+<p><img alt="Untitled" src="../images/mysql_8_migration/Untitled%203.png"></p>
 <h2>한계 및 대안</h2>
 <p>https://medium.com/daangn/mysql-online-ddl-faf47439084c 블로그에서 언급한 것 과 같이 간단한 DDL은 online DDL로 가능하지만, foreign key, index, primary key 등 변경이 큰 DDL같은 경우 불가능 한 경우가 있습니다. 이런 경우 <code>pt-online-schema-change</code>란 percona사의 마이그레이션 툴을 사용방법이 있습니다.</p>
 <p><code>pt-online-schema-change</code>는 MySQL 테이블에 비차단 방식으로 스키마 변경을 적용하는 Percona Toolkit의 도구입니다. 이 도구는 원하는 변경 사항이 포함된 새 테이블을 생성하고, 데이터를 원본 테이블에서 새 테이블로 청크 단위로 복사한 후 테이블을 교체합니다. 동적 청크 크기 조정을 지원하여 서버 성능에 미치는 영향을 최소화하고, 동시 접근 및 부하를 관리하는 옵션을 포함합니다. 이를 통해 다운타임을 줄이고 스키마 수정 동안 데이터 무결성을 유지합니다.</p>

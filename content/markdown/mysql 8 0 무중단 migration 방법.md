@@ -112,7 +112,7 @@ ALTER TABLE tbl_name ADD PRIMARY KEY (column), ALGORITHM=INPLACE, LOCK=NONE;
 
 https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html
 
-![Untitled](%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled.png)
+![Untitled](../images/mysql_8_migration/Untitled.png)
 
 예시로 **adding column DDL**은 최악으로 `in-place`, `lock=NONE(permits concurrent DML)`인 것을 확인 할 수 있습니다.
 
@@ -137,20 +137,15 @@ https://dev.mysql.com/doc/refman/8.0/en/innodb-online-ddl-operations.html
 ```bash
 (venv) isaacpark@Isaacui-MacBookPro memo-service-backend % ./manage.py sqlmigrate ecg 0059
 Invalid line: LOG_LEVEL = DEBUG
-  ___ ___      __    ___ ___     ___   
-/' __` __`\  /'__`\/' __` __`\  / __`\ 
-/\ \/\ \/\ \/\  __//\ \/\ \/\ \/\ \L\ \ 
-\ \_\ \_\ \_\ \____\ \_\ \_\ \_\ \____/
- \/_/\/_/\/_/\/____/\/_/\/_/\/_/\/___/ 
 
-[*] Current Secret ID: [memo-care-backend-secret-env]
+[*] Current Secret ID: [********-env]
 [*] Current ENV file: [.env.isaacpark]
-[*] AWS ENV: prod | IAM: isaac.park+prod@huinno.com
+[*] AWS ENV: prod | IAM: isaac.park+prod@*****.com
 
 --
 -- Alter field cloud_status on ecgtest
 --
-ALTER TABLE `ecg_ecgtest` MODIFY `cloud_status` integer NOT NULL;
+ALTER TABLE `******` MODIFY `*****` integer NOT NULL;
 ```
 
 ## 검증 테스트
@@ -261,15 +256,15 @@ for thread in dml_threads:
 
 테스트 데이터 개수
 
-![Untitled](%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%201.png)
+![Untitled](../images/mysql_8_migration/Untitled%201.png)
 
 DDL 실행 시 소요시간
 
-![Untitled](%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%202.png)
+![Untitled](../images/mysql_8_migration/Untitled%202.png)
 
 DDL 실행 시 DML 스크립트 로그:
 
-![Untitled](%5BBE%5D%20mysql%208%200%20%E1%84%86%E1%85%AE%E1%84%8C%E1%85%AE%E1%86%BC%E1%84%83%E1%85%A1%E1%86%AB%20migration%20%E1%84%87%E1%85%A1%E1%86%BC%E1%84%87%E1%85%A5%E1%86%B8%2043459c44abff413187ada23e0cf57fa2/Untitled%203.png)
+![Untitled](../images/mysql_8_migration/Untitled%203.png)
 
 ## 한계 및 대안
 
