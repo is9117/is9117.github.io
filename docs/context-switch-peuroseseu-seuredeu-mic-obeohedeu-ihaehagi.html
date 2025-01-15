@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="Context Switch: 프로세스, 스레드 및 오버헤드 이해하기" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/context-switch-peuroseseu-seuredeu-mic-obeohedeu-ihaehagi.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/performance.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">Context Switch: 프로세스, 스레드 및 오버헤드 이해하기</h1>
+	<span class="post-date">Mon 18 November 2024</span>
+	<h2>소개</h2>
+<p>컴퓨팅 세계에서 효율성과 멀티태스킹은 매우 중요합니다. 현대 운영 체제는 <strong>컨텍스트 스위칭</strong>이라는 기본 개념 덕분에 여러 애플리케이션이 동시에 실행되는 것처럼 보이게 합니다. 이 글에서는 컨텍스트 스위칭이 무엇인지, 왜 필요한지, 그리고 CPU / OS가 이를 어떻게 관리하는지에 대해 자세히 알아보겠습니다. 또한 프로세스, 스레드 및 경량 스레드 간의 차이점을 탐구하고, 그들의 컨텍스트 스위칭 오버헤드를 비교해보겠습니다.</p>
+<hr>
+<h2>컨텍스트 스위칭이란 무엇이며 왜 필요한가?</h2>
+<h3>컨텍스트 스위칭의 정의</h3>
+<p><strong>컨텍스트 스위칭</strong>은 CPU가 한 프로세스나 스레드의 실행을 중단하고 다른 프로세스나 스레드로 전환하는 과정입니다. 이는 현재 실행 중인 프로세스나 스레드의 상태(컨텍스트)를 저장하여 나중에 재개할 수 있도록 하고, 다음에 실행할 프로세스나 스레드의 저장된 상태를 로드하는 것을 포함합니다.</p>
+<p><img alt="image.png" src="../images/context_switch/image.png"></p>
+<h3>컨텍스트 스위칭의 필요성</h3>
+<ul>
+<li><strong>멀티태스킹</strong>: CPU가 여러 작업을 시간 분할 방식으로 처리할 수 있게 해줍니다.</li>
+<li><strong>자원 공유</strong>: 여러 애플리케이션이 CPU를 효과적으로 활용할 수 있도록 합니다.</li>
+<li><strong>응답성</strong>: 높은 우선순위의 작업이 신속하게 CPU 시간을 받을 수 있도록 보장합니다.</li>
+<li><strong>공정성</strong>: 단일 프로세스가 CPU를 독점하지 못하도록 합니다.</li>
+</ul>
+<p>컨텍스트 스위칭이 없다면, 하나의 프로세스가 CPU 자원을 모두 소비하여 시스템이 응답하지 않거나 사용자 경험이 저하될 수 있습니다.</p>
+<hr>
+<h2>CPU / OS가 컨텍스트 스위칭을 관리하는 방법</h2>
+<h3>CPU / OS 상태의 저장 및 복원</h3>
+<p>컨텍스트 스위칭이 발생할 때, CPU는 다음을 수행해야 합니다:</p>
+<ol>
+<li><strong>현재 상태 저장</strong>: 모든 CPU 레지스터의 값, 프로그램 카운터 및 스택 포인터를 프로세스의 제어 블록에 저장합니다.</li>
+<li>
+<p><strong>프로세스 제어 블록(PCB) 업데이트</strong>: PCB는 프로세스를 나중에 재개하는 데 필요한 모든 정보를 보유합니다.</p>
+<p><img alt="image.png" src="../images/context_switch/image%201.png"></p>
+</li>
+<li>
+<p><strong>다음 프로세스나 스레드 선택</strong>: 스케줄러는 스케줄링 알고리즘에 따라 다음에 실행할 프로세스나 스레드를 결정합니다.</p>
+</li>
+<li><strong>새 상태 로드</strong>: 선택된 프로세스나 스레드의 저장된 상태를 PCB에서 복원합니다.</li>
+</ol>
+<h3>컨텍스트 스위칭에 관련된 구성 요소</h3>
+<ul>
+<li>
+<p><strong>레지스터</strong>: 데이터와 명령어를 저장하는 CPU 내의 작은 저장 공간.</p>
+<p><img alt="x86 registers" src="../images/context_switch/image%202.png"></p>
+<p>x86 registers</p>
+</li>
+<li>
+<p><strong>프로그램 카운터(PC)</strong>: 다음에 실행할 명령어의 주소를 가리킵니다.</p>
+</li>
+<li><strong>스택 포인터(SP)</strong>: 메모리에서 현재 스택의 최상위를 가리킵니다.</li>
+<li>
+<p><strong>메모리 관리 장치(MMU)</strong>: 가상 메모리와 주소 변환을 처리합니다.</p>
+<p><img alt="image.png" src="../images/context_switch/image%203.png"></p>
+</li>
+<li>
+<p><strong>Translation Lookaside Buffer(TLB)</strong>: MMU가 가상 주소 변환 속도를 향상시키기 위해 사용하는 캐시.</p>
+<p><img alt="image.png" src="../images/context_switch/image%204.png"></p>
+</li>
+</ul>
+<h3>컨텍스트 스위칭 시 메모리 관리</h3>
+<ul>
+<li><strong>스택</strong>: 각 프로세스/스레드는 함수 호출과 지역 변수를 위한 자체 스택을 가집니다. 컨텍스트 스위칭 시 스택 포인터가 저장되고 복원됩니다.</li>
+<li><strong>힙</strong>: 동적 메모리 할당에 사용되는 메모리. 일반적으로 컨텍스트 스위칭 동안 변경되지 않습니다.</li>
+<li>
+<p><strong>메모리 세그먼테이션 및 페이징</strong>: MMU는 활성 프로세스의 주소 공간을 반영하도록 메모리 매핑을 업데이트합니다.</p>
+<p><img alt="image.png" src="../images/context_switch/image%205.png"></p>
+</li>
+</ul>
+<p><img alt="image.png" src="../images/context_switch/image%206.png"></p>
+<h3>인터럽트와 트랩</h3>
+<p>컨텍스트 스위칭은 종종 다음에 의해 트리거됩니다:</p>
+<ul>
+<li>
+<p><strong>하드웨어 인터럽트</strong>: I/O 완료와 같은 이벤트를 나타내는 하드웨어 장치로부터의 신호.</p>
+<p><img alt="x86 Interrupt Descriptor Table(IDT)" src="../images/context_switch/image%207.png"></p>
+<p>x86 Interrupt Descriptor Table(IDT)</p>
+</li>
+<li>
+<p><strong>소프트웨어 인터럽트(트랩)</strong>: 프로그램이 시스템 서비스를 요청하거나 오류를 감지할 때 생성됨.</p>
+</li>
+<li><strong>타이머 인터럽트</strong>: 스케줄러가 프로세스에 CPU 시간 슬라이스를 할당하는 데 사용.</li>
+</ul>
+<p>인터럽트가 발생하면 CPU는:</p>
+<ol>
+<li>현재 컨텍스트를 저장합니다.</li>
+<li>인터럽트 핸들러를 실행합니다.</li>
+<li>스케줄링 정책에 따라 컨텍스트 스위칭 여부를 결정합니다.</li>
+</ol>
+<hr>
+<h2>프로세스, 스레드 및 경량 스레드</h2>
+<h3>프로세스</h3>
+<ul>
+<li><strong>정의</strong>: 실행 중인 독립적인 프로그램으로, 자체 메모리 공간(코드, 데이터, 힙 및 스택 세그먼트)을 가집니다.</li>
+<li><strong>특징</strong>:<ul>
+<li><strong>격리</strong>: 프로세스는 서로 격리되어 있어 보안과 안정성을 높입니다.</li>
+<li><strong>통신</strong>: 프로세스 간 통신(IPC) 메커니즘이 필요하며, 이는 복잡할 수 있습니다.</li>
+<li><strong>컨텍스트 스위칭 오버헤드</strong>: MMU를 업데이트하고 메모리 공간을 전환해야 하므로 오버헤드가 높습니다.</li>
+</ul>
+</li>
+</ul>
+<p><img alt="image.png" src="../images/context_switch/image%208.png"></p>
+<h3>스레드</h3>
+<ul>
+<li><strong>정의</strong>: 스케줄러에 의해 독립적으로 관리될 수 있는 가장 작은 명령어 시퀀스.</li>
+<li><strong>특징</strong>:<ul>
+<li><strong>공유 메모리 공간</strong>: 동일한 프로세스 내의 스레드는 코드, 데이터, 힙 세그먼트를 공유하지만 개별 스택을 가집니다.</li>
+<li><strong>효율성</strong>: 프로세스에 비해 컨텍스트 스위칭 오버헤드가 낮습니다.</li>
+<li><strong>통신</strong>: 동일한 주소 공간을 공유하므로 스레드 간 통신이 용이합니다.</li>
+<li><strong>동기화 문제</strong>: 데이터 경쟁과 불일치를 방지하기 위해 주의 깊은 동기화가 필요합니다.</li>
+</ul>
+</li>
+</ul>
+<h3>경량 스레드</h3>
+<ul>
+<li><strong>정의</strong>: 사용자 공간에서 커널의 개입 없이 관리되는 사용자 수준 스레드(ex. Java Virtual Threads, Erlang lightweight process, Golang goroutines).</li>
+</ul>
+<p><img alt="image.png" src="../images/context_switch/image%209.png"></p>
+<ul>
+<li><strong>특징</strong>:<ul>
+<li><strong>빠른 컨텍스트 스위칭</strong>: 커널 모드 전환을 피하여 컨텍스트 스위칭이 빠릅니다.</li>
+<li><strong>다수 생성 가능</strong>: 리소스 사용량이 적어 커널 스레드보다 더 많은 경량 스레드를 생성할 수 있습니다.</li>
+<li><strong>제한 사항</strong>:<ul>
+<li><strong>블로킹 호출</strong>: 블로킹 시스템 호출은 커널이 사용자 수준 스레드를 인식하지 못하므로 전체 프로세스를 블록할 수 있습니다.</li>
+<li><strong>CPU 활용도</strong>: 커널 수준 스케줄링 없이 멀티코어 프로세서를 완전히 활용하지 못할 수 있습니다.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2>컨텍스트 스위칭 오버헤드 비교</h2>
+<h3>프로세스</h3>
+<ul>
+<li><strong>오버헤드 요인</strong>:<ul>
+<li>메모리 주소 공간 전환.</li>
+<li>TLB 플러시 및 리로드.</li>
+<li>페이지 테이블 및 MMU 업데이트.</li>
+<li>많은 상태 정보의 저장 및 복원.</li>
+</ul>
+</li>
+<li><strong>결과</strong>: 높은 오버헤드로 인해 컨텍스트 스위칭이 비교적 느립니다.</li>
+</ul>
+<h3>스레드</h3>
+<ul>
+<li><strong>오버헤드 요인</strong>:<ul>
+<li>CPU 레지스터와 스택 포인터의 저장 및 복원.</li>
+<li>메모리 주소 공간 전환이 필요 없음.</li>
+</ul>
+</li>
+<li><strong>결과</strong>: 프로세스보다 오버헤드가 낮아 컨텍스트 스위칭이 빠릅니다.</li>
+</ul>
+<h3>경량 스레드</h3>
+<ul>
+<li><strong>오버헤드 요인</strong>:<ul>
+<li>사용자 공간에서 포인터와 레지스터를 변경하는 것만으로 컨텍스트 스위칭 가능.</li>
+<li>컨텍스트 스위칭에 커널 개입이 없음.</li>
+</ul>
+</li>
+<li><strong>결과</strong>: 가장 낮은 오버헤드로 매우 빠른 컨텍스트 스위칭 가능.</li>
+<li><strong>제한 사항</strong>:<ul>
+<li>커널 수준 스케줄링 없이 멀티코어 프로세서의 이점을 충분히 활용하지 못할 수 있음.</li>
+</ul>
+</li>
+</ul>
+<h3>시각적 비교</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>프로세스</th>
+<th>스레드</th>
+<th>경량 스레드</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>메모리 공간 전환</td>
+<td>예</td>
+<td>아니오</td>
+<td>아니오</td>
+</tr>
+<tr>
+<td>커널 개입</td>
+<td>예</td>
+<td>예</td>
+<td>아니오</td>
+</tr>
+<tr>
+<td>컨텍스트 스위칭 오버헤드</td>
+<td>높음</td>
+<td>중간</td>
+<td>낮음</td>
+</tr>
+<tr>
+<td>스케줄링</td>
+<td>커널 수준</td>
+<td>커널 수준</td>
+<td>사용자 수준</td>
+</tr>
+<tr>
+<td>동기화</td>
+<td>복잡한 IPC</td>
+<td>동기화 프리미티브</td>
+<td>사용자 수준 동기화</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>애플리케이션 설계를 위한 시사점</h2>
+<p>컨텍스트 스위칭 오버헤드의 차이를 이해하는 것은 효율적인 애플리케이션 설계에 중요합니다:</p>
+<ul>
+<li><strong>프로세스를 사용할 때</strong>:<ul>
+<li>격리와 보안이 최우선일 때.</li>
+<li>컨텍스트 스위칭 오버헤드가 큰 문제가 아닐 때.</li>
+</ul>
+</li>
+<li><strong>스레드를 사용할 때</strong>:<ul>
+<li>작업에 공유 메모리와 빠른 통신이 필요할 때.</li>
+<li>낮은 컨텍스트 스위칭 오버헤드가 필요할 때.</li>
+<li>동기화 문제를 처리할 준비가 되어 있을 때.</li>
+</ul>
+</li>
+<li><strong>경량 스레드를 사용할 때</strong>:<ul>
+<li>많은 수의 동시 작업이 필요할 때.</li>
+<li>커널 스케줄링 없이 사용자 공간에서 작업을 관리할 수 있을 때.</li>
+<li>블로킹 시스템 호출을 최소화하거나 논블로킹 대안을 사용할 때.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2>파이썬에서 컨텍스트 스위칭 최소화 방법</h2>
+<p>파이썬에서 컨텍스트 스위칭을 최소화하여 애플리케이션의 성능을 향상시킬 수 있습니다. 다음은 파이썬 개발자가 컨텍스트 스위칭을 줄이기 위해 고려할 수 있는 방법들입니다:</p>
+<h3>1. 비동기 프로그래밍 활용</h3>
+<ul>
+<li><strong>GIL(Global Interpreter Lock)</strong>: 파이썬은 GIL 때문에 한 번에 하나의 스레드만 실행할 수 있습니다.</li>
+<li><strong><code>asyncio</code> 라이브러리</strong>: 비동기 I/O를 처리하기 위해 설계된 라이브러리로, 코루틴과 이벤트 루프를 사용하여 컨텍스트 스위칭 오버헤드를 줄입니다.</li>
+<li><strong>코루틴 사용</strong>: <code>async</code>와 <code>await</code> 키워드를 사용하여 비동기 함수(코루틴)를 정의하고 실행합니다.</li>
+<li><strong>예시</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_data</span><span class="p">():</span>
+    <span class="c1"># 비동기 I/O 작업 수행</span>
+    <span class="k">pass</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">fetch_data</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)]</span>
+    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+
+<span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+</code></pre></div>
+
+<h3>2. 멀티스레딩 대신 멀티프로세싱 사용</h3>
+<ul>
+<li><strong>멀티프로세싱 모듈</strong>: <code>multiprocessing</code> 모듈을 사용하여 프로세스를 생성하면 GIL의 제한을 우회할 수 있습니다.</li>
+<li><strong>CPU 바운드 작업</strong>: CPU 집약적인 작업의 경우 멀티프로세싱이 더 나은 성능을 제공합니다.</li>
+<li><strong>프로세스 풀 사용</strong>: 프로세스 풀을 사용하여 프로세스 생성을 관리하고 컨텍스트 스위칭 오버헤드를 줄입니다.</li>
+<li><strong>예시</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">multiprocessing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pool</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+    <span class="c1"># CPU 집약적인 작업 수행</span>
+    <span class="k">pass</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">with</span> <span class="n">Pool</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="k">as</span> <span class="n">p</span><span class="p">:</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">compute</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">))</span>
+</code></pre></div>
+
+<h3>3. 스레드 수 최소화 및 재사용</h3>
+<ul>
+<li><strong>스레드 풀 사용</strong>: <code>concurrent.futures.ThreadPoolExecutor</code>를 사용하여 스레드를 관리하고 재사용하여 스레드 생성 오버헤드를 줄입니다.</li>
+<li><strong>불필요한 스레드 생성 회피</strong>: 필요한 최소한의 스레드만 사용하여 컨텍스트 스위칭 빈도를 낮춥니다.</li>
+<li><strong>예시</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">concurrent.futures</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThreadPoolExecutor</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">task</span><span class="p">():</span>
+    <span class="c1"># I/O 바운드 작업 수행</span>
+    <span class="k">pass</span>
+
+<span class="k">with</span> <span class="n">ThreadPoolExecutor</span><span class="p">(</span><span class="n">max_workers</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span> <span class="k">as</span> <span class="n">executor</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">executor</span><span class="o">.</span><span class="n">submit</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>4. 작업 병합 및 일괄 처리</h3>
+<ul>
+<li><strong>작업 병합</strong>: 여러 작은 작업을 하나로 합쳐 컨텍스트 스위칭 횟수를 줄입니다.</li>
+<li><strong>일괄 처리 기법</strong>: 데이터 처리를 일괄적으로 수행하여 오버헤드를 최소화합니다.</li>
+</ul>
+<h3>5. 적절한 동시성 모델 선택</h3>
+<ul>
+<li><strong>I/O 바운드 작업</strong>: 비동기 프로그래밍(<code>asyncio</code>)이나 멀티스레딩을 사용하여 컨텍스트 스위칭 오버헤드를 줄입니다.</li>
+<li><strong>CPU 바운드 작업</strong>: 멀티프로세싱을 사용하여 여러 CPU 코어를 활용하고 GIL의 영향을 최소화합니다.</li>
+</ul>
+<h3>6. C 확장 모듈 사용 고려</h3>
+<ul>
+<li><strong>Cython이나 C 확장 사용</strong>: 성능이 중요한 부분을 C나 Cython으로 작성하면 GIL의 영향을 받지 않으면서 컨텍스트 스위칭 오버헤드를 줄일 수 있습니다.</li>
+<li><strong>예시</strong>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># cython: language_level=3</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+    <span class="n">cdef</span> <span class="nb">int</span> <span class="n">i</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000000</span><span class="p">):</span>
+        <span class="k">pass</span>
+</code></pre></div>
+
+<h3>7. CPU 어피니티(CPU Affinity)를 활용한 컨텍스트 스위칭 최소화</h3>
+<p><img alt="image.png" src="../images/context_switch/image%2010.png"></p>
+<ul>
+<li><strong>CPU 어피니티 설정</strong>: 프로세스를 특정 CPU 코어에 바인딩하여 컨텍스트 스위칭 오버헤드를 줄일 수 있습니다.</li>
+<li><strong>이점</strong>:<ul>
+<li><strong>캐시 로컬리티 향상</strong>: 프로세스가 동일한 코어에서 실행되면 캐시 미스가 줄어듭니다.</li>
+<li><strong>컨텍스트 스위칭 감소</strong>: 프로세스가 코어 간에 이동하지 않아 오버헤드가 감소합니다.</li>
+</ul>
+</li>
+<li><strong>적용 방법</strong>:<ul>
+<li><strong><code>os.sched_setaffinity</code> 함수 사용</strong>: 파이썬에서 프로세스의 CPU 어피니티를 설정할 수 있습니다.</li>
+<li><strong>예시</strong>:</li>
+</ul>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">():</span>
+    <span class="c1"># CPU 집약적인 작업 수행</span>
+    <span class="k">pass</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">cpu_id</span> <span class="o">=</span> <span class="mi">0</span>  <span class="c1"># 바인딩할 CPU 코어 ID</span>
+    <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">sched_setaffinity</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="p">{</span><span class="n">cpu_id</span><span class="p">})</span>
+    <span class="n">compute</span><span class="p">()</span>
+</code></pre></div>
+
+<ul>
+<li><strong>주의 사항</strong>:<ul>
+<li><strong>멀티프로세싱과 함께 사용</strong>: 여러 프로세스를 생성할 때 각 프로세스에 다른 코어를 할당하여 병렬 처리를 최적화합니다.</li>
+<li><strong>시스템 리소스 고려</strong>: 코어 수보다 많은 프로세스를 생성하면 오히려 성능이 저하될 수 있습니다.</li>
+<li><strong>운영 체제 지원</strong>: CPU 어피니티 설정은 리눅스와 같은 일부 운영 체제에서만 지원될 수 있습니다.</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2>결론</h2>
+<p>컨텍스트 스위칭은 현대 운영 체제에서 멀티태스킹을 가능하게 하는 기본 메커니즘입니다. CPU가 컨텍스트 스위칭을 어떻게 관리하는지, 그리고 프로세스, 스레드, 경량 스레드 간의 차이를 이해함으로써 개발자는 애플리케이션 성능을 최적화하기 위한 현명한 결정을 내릴 수 있습니다.</p>
+<ul>
+<li><strong>프로세스</strong>는 격리를 제공하지만 컨텍스트 스위칭 오버헤드가 높습니다.</li>
+<li><strong>스레드</strong>는 메모리 공간을 공유하며, 성능과 복잡성의 균형을 제공합니다.</li>
+<li><strong>경량 스레드</strong>는 가장 빠른 컨텍스트 스위칭을 제공하지만 제한 사항을 관리해야 합니다.</li>
+<li><strong>파이썬에서</strong>, 비동기 프로그래밍, 멀티프로세싱, CPU 어피니티 설정 등을 활용하여 컨텍스트 스위칭 오버헤드를 최소화할 수 있습니다.</li>
+</ul>
+<p>적절한 병행성 모델을 선택하는 것은 애플리케이션의 성능 요구 사항, 리소스 제약 조건 및 관리할 복잡성에 따라 달라집니다.</p>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+					<li><a href="https://is9117.github.io/tag/performance.html">performance</a></li>
+					<li><a href="https://is9117.github.io/tag/profiling.html">profiling</a></li>
+					<li><a href="https://is9117.github.io/tag/python.html">python</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>

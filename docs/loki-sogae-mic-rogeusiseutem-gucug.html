@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="Loki 소개 및 로그시스템 구축" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://is9117.github.io/loki-sogae-mic-rogeusiseutem-gucug.html" />
+		<meta property="og:image" content="https://is9117.github.io/images/" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://is9117.github.io/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://is9117.github.io/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://is9117.github.io/feeds/infra.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://is9117.github.io/">
+					<img class="profile-picture" src="https://is9117.github.io/images/">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-You can add links in your config file"></i>
+					</a>
+					<a class="sidebar-social-item" href="#" target="_blank">
+						<i class="fa fa-Another social link"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://is9117.github.io/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">Loki 소개 및 로그시스템 구축</h1>
+	<span class="post-date">Thu 08 August 2024</span>
+	<h2>Introduction</h2>
+<p>Loki라는 log system으로 로그시스템을 구축한 내용을 소개하려고 합니다.</p>
+<h2>Loki</h2>
+<p>Loki는 Grafana Labs에서 개발한 로그 집계 시스템으로, Prometheus와 유사한 구조를 가지고 있습니다. 로그 데이터를 효율적으로 수집, 저장, 검색할 수 있으며, 특히 메타데이터 기반의 인덱싱을 통해 저장소 사용량을 최소화하는 것이 특징입니다. 
+Kubernetes 환경에서도 원활하게 동작하며, 다양한 데이터 소스와 통합이 가능합니다. Loki는 로그를 텍스트 형태로 저장하며, 로그 레이블을 사용해 빠르게 검색할 수 있습니다. 이는 로그 데이터를 보다 체계적으로 관리하고 필요한 정보를 신속하게 찾을 수 있게 도와줍니다. 
+주로 Grafana와 함께 사용되어 시각화와 모니터링을 용이하게 합니다. Grafana에서 Loki의 데이터를 사용하여 대시보드를 구성하면, 전체 시스템의 상태를 한눈에 파악할 수 있습니다.
+또한, Loki는 클라우드 네이티브 애플리케이션 환경에 적합하며, 다양한 클라우드 서비스와 통합이 가능합니다. 예를 들어, Amazon S3, Google Cloud Storage 등과 같은 오브젝트 스토리지와도 쉽게 연동할 수 있어, 로그 데이터를 안전하고 효율적으로 저장하고 관리할 수 있습니다. 
+Loki의 주요 장점 중 하나는 비용 효율성입니다. 로그 데이터를 메타데이터 기반으로 인덱싱하여 저장소 사용량을 최소화하므로, 대규모 로그 데이터를 관리하는 데 드는 비용을 절감할 수 있습니다. 
+또한, Loki는 스케일 아웃 아키텍처를 지원하여, 시스템 확장이 용이합니다. 필요에 따라 노드를 추가하여 시스템 성능을 향상시킬 수 있습니다. 
+마지막으로, Loki는 오픈소스 프로젝트로, 커뮤니티의 활발한 지원을 받고 있습니다. 지속적인 업데이트와 개선이 이루어지고 있어, 최신 기술을 반영한 기능을 사용할 수 있습니다. 이를 통해 사용자는 안정적이고 신뢰할 수 있는 로그 관리 시스템을 구축할 수 있습니다.</p>
+<p><img alt="Typical Loki architecture" src="../images/loki/image.png"></p>
+<p>Typical Loki architecture</p>
+<p><strong>장점:</strong></p>
+<ul>
+<li>비용 효율성: 메타데이터 기반 인덱싱을 통해 저장소 사용량을 최소화하여 대규모 로그 데이터를 관리하는 비용 절감</li>
+<li>스케일 아웃 아키텍처 지원: 필요에 따라 노드를 추가하여 시스템 성능 향상</li>
+<li>클라우드 네이티브 애플리케이션 환경에 적합: 다양한 클라우드 서비스와 통합 가능, 예를 들어 Amazon S3, Google Cloud Storage 등과 연동</li>
+<li>Kubernetes 환경에서 원활하게 동작: 다양한 데이터 소스와 통합 가능</li>
+<li>오픈소스 프로젝트: 활발한 커뮤니티 지원, 지속적인 업데이트와 개선</li>
+<li>Grafana와의 호환성: 시각화와 모니터링을 용이하게 하여 전체 시스템 상태를 한눈에 파악 가능</li>
+</ul>
+<p><strong>단점:</strong></p>
+<ul>
+<li>검색 성능 저하: 메타데이터 기반 인덱싱만으로는 대규모 로그 데이터에서 검색 성능이 저하될 수 있음</li>
+<li>데이터 중복 문제: 로그 데이터가 중복 저장될 가능성이 있음</li>
+<li>설정 복잡성: 초기 설정과 구성 과정이 복잡할 수 있으며, 사용자에게 높은 기술적 이해도가 요구됨</li>
+<li>제한된 기본 기능: 일부 고급 기능은 플러그인이나 추가 도구를 통해서만 사용할 수 있음</li>
+</ul>
+<h2>Architecture</h2>
+<p>구조를 구상 시 고려사항은 아래와 같습니다.</p>
+<ul>
+<li>비용최적화 위해 ingester replica count를 1개 사용</li>
+<li>로그손실 방지 및 buffering kafka event broker사용</li>
+<li>write path, read path를 분리되는 배포방법 사용으로 필요에 따라 양쪽 scale-in, out 지원</li>
+<li>bloom filter 사용으로 문자열 색인검색 지원</li>
+</ul>
+<p><a href="../images/loki/memo-log-system-architecture.drawio">my-log-system-architecture.drawio</a></p>
+<p><img alt="my-log-system-architecture.jpg" src="../images/loki/memo-log-system-architecture.jpg"></p>
+<h3>컴포넌트</h3>
+<p><strong>Application, Lambda(Cloudwatch)</strong>: 로그 생성하는 주체. gunicorn(django), nginx, aws lambda 등이 있습니다. lambda는 cloudwatch로 저장하게 되고, k8s상에서 동작하는 app는 k8s log(node fs)로 저장됩니다.</p>
+<p><strong>Log collector</strong>: fluent-bit와 fluentd로 로그를 수집합니다. fluent-bit으로 pod로그수집, fluentd로 lambda(cloudwatch)로그 수집을 합니다. 수집한 로그는 kafka로 전달됩니다. 필요에 따라 추가 정보(pod, namespace, HW정보 등)을 로그 metadata로 포함합니다.</p>
+<p><strong>Kafka(MSK)</strong>: 로그가 저장되기 전까지 buffering이 되는 기능을 제공합니다. loki나 log forwarder가 장애 발생해더라도 로그 손실을 방지할 수 있습니다. AWS mananged service사용합니다. loki ingester replica 1개 사용 대신 kafka를 사용하여 HA를 해결했습니다.</p>
+<p><strong>Log Forwarder</strong>: kafka서 로그를 consuming하는 객체입니다. log collector로 전달받은 로그와 metadata를 loki인터페이스에 맞추어 loki에 전달합니다. </p>
+<p><strong>Loki</strong>: 로그 수집, 인덱싱, 압축, 업로드, 쿼리, 케싱, API서버 등 기능을 제공합니다. 스토리지는 S3를 사용합니다.</p>
+<p><strong>S3</strong>: 로그의 chunk와 index 등 파일들을 영구저장하는 저장소입니다. loki에서 관리합니다.</p>
+<p><strong>Grafana</strong>: Loki의 GUI역활을 합니다. loki소스 기반 alert 및 rule도 제공합니다.</p>
+<h2>LogQL 기본 사용법</h2>
+<h3>기본 쿼리</h3>
+<p>LogQL은 Grafana Loki에서 사용하는 쿼리 언어로, 로그 데이터를 검색하고 필터링하며, 메트릭을 생성할 수 있습니다. 
+LogQL은 두 가지 주요 구성 요소로 구성됩니다: <strong>로그 쿼리(log query)</strong>와 <strong>메트릭 쿼리(metric query)</strong> 입니다. 
+이 튜토리얼에서는 LogQL의 기본 사용법을 단계별로 설명하겠습니다.</p>
+<h3>1. LogQL 쿼리의 기본 구조</h3>
+<p>LogQL 쿼리는 기본적으로 다음과 같은 구조로 이루어져 있습니다:</p>
+<div class="highlight"><pre><span></span><code>{selector} | filter | parser | ... | metric_function
+</code></pre></div>
+
+<ul>
+<li><strong>{selector}</strong>: 로그 스트림을 선택하는 라벨 셀렉터입니다.</li>
+<li><strong>filter</strong>: 로그 라인에서 특정 텍스트 패턴을 찾기 위한 필터입니다.</li>
+<li><strong>parser</strong>: 로그 라인을 파싱하여 구조화된 데이터를 추출합니다.</li>
+<li><strong>metric_function</strong>: 로그 라인에서 메트릭을 계산합니다.</li>
+</ul>
+<h3>2. 로그 쿼리</h3>
+<p>로그 쿼리는 로그 스트림을 선택하고 필터링하는 데 사용됩니다.</p>
+<p><strong>라벨 셀렉터</strong></p>
+<p>라벨 셀렉터는 로그 스트림을 선택하는 데 사용됩니다. 라벨 셀렉터는 중괄호 <code>{}</code> 안에 key-value 쌍으로 표현됩니다. 예를 들어:</p>
+<div class="highlight"><pre><span></span><code>{container_name=&quot;gunicorn&quot;}
+</code></pre></div>
+
+<p>위의 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림을 선택합니다.</p>
+<p><strong>필터링</strong></p>
+<p>파이프 <code>|</code> 기호를 사용하여 필터를 추가할 수 있습니다. 필터는 로그 라인에서 특정 문자열을 찾는 데 사용됩니다. 예를 들어:</p>
+<div class="highlight"><pre><span></span><code>{container_name=&quot;gunicorn&quot;} |= &quot;error&quot;
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림에서 <code>"error"</code> 문자열이 포함된 로그 라인을 필터링합니다.</p>
+<p><strong>네거티브 필터</strong></p>
+<p>특정 문자열이 포함되지 않은 로그 라인을 찾을 때는 <code>!=</code> 연산자를 사용합니다.</p>
+<div class="highlight"><pre><span></span><code>{container_name=&quot;gunicorn&quot;} != &quot;info&quot;
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림에서 <code>"info"</code> 문자열이 포함되지 않은 로그 라인을 필터링합니다.</p>
+<h3>3. 메트릭 쿼리</h3>
+<p>메트릭 쿼리는 로그 라인에서 메트릭을 계산하는 데 사용됩니다. 메트릭을 계산하려면 <code>rate</code> 함수와 같은 함수와 함께 사용합니다.</p>
+<p><strong>카운트 메트릭</strong></p>
+<p>로그 라인을 카운트하여 메트릭을 생성할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code>count_over_time({container_name=&quot;gunicorn&quot;}[5m])
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림에서 최근 5분 동안의 로그 라인 수를 카운트합니다.</p>
+<p><strong>속도 계산</strong></p>
+<p>로그 라인의 속도를 계산하려면 <code>rate</code> 함수를 사용할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code>rate({container_name=&quot;gunicorn&quot;}[1m])
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림에서 매 분당 로그 라인의 생성 속도를 계산합니다.</p>
+<h3>4. 파싱 로그 라인</h3>
+<p>LogQL은 로그 라인을 파싱하여 구조화된 데이터를 추출할 수 있습니다. <code>| json</code> 또는 <code>| logfmt</code>와 같은 파서(parser)를 사용하여 로그 데이터를 구조화할 수 있습니다.</p>
+<p><strong>JSON 파서</strong></p>
+<div class="highlight"><pre><span></span><code>{container_name=&quot;gunicorn&quot;} | json
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>gunicorn</code>인 로그 스트림을 선택하고, 로그 라인을 JSON 형식으로 파싱하여 키-값 쌍으로 변환합니다.</p>
+<p><strong>Logfmt 파서</strong></p>
+<div class="highlight"><pre><span></span><code>{container_name=&quot;nginx&quot;} | logfmt
+</code></pre></div>
+
+<p>이 쿼리는 <code>container_name</code> 라벨이 <code>nginx</code>인 로그 스트림을 선택하고, 로그 라인을 logfmt 형식으로 파싱하여 키-값 쌍으로 변환합니다.</p>
+<h3>5. 정리</h3>
+<p>LogQL은 강력한 로그 분석 도구로서, 라벨 셀렉터를 사용하여 로그 스트림을 선택하고, 다양한 필터와 파서를 사용하여 로그 데이터를 분석할 수 있습니다. 
+이를 통해 로그 데이터에서 유용한 인사이트를 얻고, 메트릭을 계산할 수 있습니다. 
+기본적인 LogQL 사용법을 익힌 후에는 더 복잡한 쿼리를 작성하여 다양한 분석을 시도해볼 수 있습니다.
+LogQL의 공식 문서와 Grafana의 예제를 통해 추가적인 기능과 고급 사용법을 탐색할 수 있습니다.</p>
+<p><strong>Reference:</strong></p>
+<ul>
+<li>https://grafana.com/docs/loki/latest/query/</li>
+<li>https://sbcode.net/grafana/logql/</li>
+</ul>
+<h2>Bloom filters 사용법</h2>
+<p>Bloom filters는 해시 기반의 확률적 데이터 구조로, 집합에 대한 멤버십 검사를 수행하는데 사용됩니다. 특정 값에 대한 해시값을 비트 배열(bitmask)에 기록하면서 인덱싱을 합니다.</p>
+<p>Bloom filters는 다음과 같은 특징을 가지고 있습니다:</p>
+<ol>
+<li><strong>False Negative가 없는 구조</strong>: 특정 값이 Bloom Filter에 존재하지 않는다고 나왔을 때, 해당 값은 실제로도 집합에 존재하지 않는 것이 100% 확실합니다. 
+즉, False Negative의 확률이 0%입니다.</li>
+<li><strong>False Positive의 가능성</strong>: 특정 값이 Bloom Filter에 존재한다고 나왔을 때, 실제로는 존재하지 않을 수도 있습니다. 이는 해시 충돌로 인해 발생하며, 
+False Positive의 확률은 0보다 크고 1보다 작습니다. 이 확률은 사용된 해시 함수의 개수와 비트 배열의 크기에 따라 달라집니다.</li>
+<li><strong>효율성</strong>: 메모리 사용량이 적고, 매우 빠른 검색 속도를 제공합니다. 하지만 원소의 삭제가 어렵다는 단점이 있습니다.</li>
+</ol>
+<p>해시 충돌로 인해 동일한 해시 인덱스가 여러 번 사용될 수 있지만, 특정 값이 해시된 인덱스에서 비트가 모두 1로 설정되어 있다면 그 값은 집합에 존재할 수도 있고, 아닐 수도 있습니다. 
+그러나, 만약 해시된 인덱스 중 하나라도 0이라면 해당 값은 집합에 존재하지 않는 것이 확실합니다.</p>
+<p><img alt="image.png" src="../images/loki/image%201.png"></p>
+<p>이런 특징으로 인해 log 문자열 색인에 활용되고 있습니다. Loki는 log message를 n-gram으로 나누어 token을 hash값으로 bloom filters를 사용하고 있습니다.</p>
+<p>아래 처럼 검색 시 특정 문자열이 포함 되지 않는 로그 chunk를 빨리 구분할 수 있어 S3(혹은 cache) 검색을 줄이게 됩니다.</p>
+<p>아래 쿼리는 bloom filters 인덱스로 검색하기 때문에 빠른 반응속도를 확인 할 수 있습니다.</p>
+<p>문자열 필터링을 쿼리 가장 앞에서 사용 시 bloom filters가 활용됩니다. 예시:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="n">cluster</span><span class="o">=</span><span class="s2">&quot;prod&quot;</span><span class="p">}</span> <span class="o">|</span> <span class="n">traceID</span><span class="o">=</span><span class="s2">&quot;3c0e3dcd33e7&quot;</span>
+</code></pre></div>
+
+<p><strong>Reference:</strong></p>
+<ul>
+<li>https://grafana.com/blog/2024/04/09/grafana-loki-3.0-release-all-the-new-features/</li>
+</ul>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://is9117.github.io/tag/backend.html">backend</a></li>
+					<li><a href="https://is9117.github.io/tag/infra.html">infra</a></li>
+					<li><a href="https://is9117.github.io/tag/log.html">log</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>
