@@ -26,9 +26,12 @@ LINKS = (
 
 # Social widget
 SOCIAL = (
-    ("You can add links in your config file", "#"),
-    ("Another social link", "#"),
+    ("email", "is9117@me.com"),
+    ("github", "https://github.com/is9117"),
+    ("trophy", "https://solved.ac/profile/is9117")
 )
+
+PROFILE_IMAGE = "profile.jpeg"
 
 DEFAULT_PAGINATION = 10
 
@@ -45,8 +48,8 @@ SITEMAP = {
         "pages": 0.4,
     },
     "changefreqs": {
-        "articles": "weekly",
+        "articles": "daily",
         "indexes": "daily",
-        "pages": "weekly",
+        "pages": "daily",
     },
 }
