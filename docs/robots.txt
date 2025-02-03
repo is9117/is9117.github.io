@@ -1,4 +1,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://is9117.github.io/sitemap.xml
+Sitemap: https://blog.i544c.com/sitemap.xml
