@@ -1,1 +1,2 @@
 pelican[markdown]==4.10.2
+pelican-sitemap==1.2.0

@@ -34,3 +34,19 @@ DEFAULT_PAGINATION = 10
 
 # Uncomment following line if you want document-relative URLs when developing
 # RELATIVE_URLS = True
+
+TEMPLATE_PAGES = {'robots.txt': 'robots.txt'}
+
+SITEMAP = {
+    "format": "xml",
+    "priorities": {
+        "articles": 0.6,
+        "indexes": 0.5,
+        "pages": 0.4,
+    },
+    "changefreqs": {
+        "articles": "weekly",
+        "indexes": "daily",
+        "pages": "weekly",
+    },
+}

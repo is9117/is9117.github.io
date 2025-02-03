@@ -1,0 +1,6 @@
+User-agent: *
+Disallow:
+
+{% if SITEURL %}
+Sitemap: {{ SITEURL }}/sitemap.xml
+{% endif %}
