@@ -40,6 +40,15 @@ DEFAULT_PAGINATION = 10
 
 TEMPLATE_PAGES = {'robots.txt': 'robots.txt'}
 
+EXTRA_PATH_METADATA = {
+    "extras/CNAME": {"path": "CNAME"},
+}
+
+STATIC_PATHS = [
+    'images',
+    'extras/CNAME'
+]
+
 SITEMAP = {
     "format": "xml",
     "priorities": {
