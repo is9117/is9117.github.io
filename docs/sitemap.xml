@@ -6,35 +6,35 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/archives.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/author/bagisag.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/author/isaac-park.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/authors.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -62,49 +62,56 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/categories.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/category/ai.html</loc>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/api.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/backend.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/database.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/gisulseutaeg.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/infra.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/performance.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -139,7 +146,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/index2.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -154,6 +161,13 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 <url>
 <loc>https://blog.i544c.com/loki-sogae-mic-rogeusiseutem-gucug.html</loc>
 <lastmod>2024-08-19T17:13:00+09:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.6</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/model-context-protocolmcp-sogae-gaenyeom-gisul-gujowa-hwalyong-sarye.html</loc>
+<lastmod>2025-03-24T15:01:00+09:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.6</priority>
 </url>
@@ -181,147 +195,154 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/robots.txt</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/algorithm.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/api.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/aws.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/backend.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/ci.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/data-structure.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/database.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/deploy.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/django.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/document.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/git.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/infra.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/llm.html</loc>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/log.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/migration.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/operation.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/performance.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/profiling.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/pytest.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/python.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tags.html</loc>
-<lastmod>2025-02-03T09:33:17-00:00</lastmod>
+<lastmod>2025-03-24T16:26:38-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>

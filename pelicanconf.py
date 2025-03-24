@@ -27,7 +27,7 @@ LINKS = (
 # Social widget
 SOCIAL = (
     ("email", "is9117@me.com"),
-    ("github", "https://github.com/is9117"),
+    ("twitter", "https://x.com/i544c_park"),
     ("trophy", "https://solved.ac/profile/is9117")
 )
 
