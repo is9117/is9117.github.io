@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="django migration unittest 및 트러블슈팅" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://blog.i544c.com/django-migration-unittest-mic-teureobeulsyuting.html" />
+		<meta property="og:image" content="https://blog.i544c.com/images/profile.jpeg" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://blog.i544c.com/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://blog.i544c.com/feeds/backend.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://blog.i544c.com/">
+					<img class="profile-picture" src="https://blog.i544c.com/images/profile.jpeg">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="mailto:is9117@me.com">
+						<i class="fa fa-envelope"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://x.com/i544c_park" target="_blank">
+						<i class="fa fa-twitter"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://solved.ac/profile/is9117" target="_blank">
+						<i class="fa fa-trophy"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://blog.i544c.com/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">django migration unittest 및 트러블슈팅</h1>
+	<span class="post-date">Thu 03 April 2025</span>
+	<h2>Introduction</h2>
+<p>스키마(schema) 및 데이터(data) 마이그레이션은 안정적인 서비스 운영을 위한 필수 요소이다. 마이그레이션 스크립트가 안정적으로 동작하는지 검증하기 위해서는 테스트 코드 작성이 반드시 필요하다. 마이그레이션 스크립트의 테스트 코드 작성을 통해 다음과 같은 장점을 얻을 수 있다.</p>
+<ol>
+<li><strong>버그 사전 발견</strong><ul>
+<li>다양한 테스트 케이스를 미리 고민하여 테스트 코드를 작성할 경우, 실제 라이브 서비스에서만 발견될 수 있는 잠재적인 버그들을 사전에 발견하고 수정할 수 있다.</li>
+</ul>
+</li>
+<li><strong>재현성 확보 및 외부 종속성 관리</strong><ul>
+<li>마이그레이션 스크립트가 외부 함수나 라이브러리에 의존하는 경우, 해당 함수나 라이브러리의 변경으로 인해 발생할 수 있는 이슈를 미리 테스트를 통해 발견할 수 있다.</li>
+<li>라이브 서버에서는 마이그레이션 스크립트가 정상적으로 배포된 이후 다시 실행될 일이 없지만, 개발 과정에서 스크립트 수정이나 추가적인 커밋과 같은 형상 변경이 발생하면, 배포 전에 매번 테스트를 수행해야 하는 불편함이 있다. 또한, 다른환경 및 라이브 환경 간 형상 차이가 커질수록 배포 과정에서의 이슈 발생 가능성이 증가한다.</li>
+</ul>
+</li>
+</ol>
+<h2>pytest-django</h2>
+<p><a href="https://pytest-django.readthedocs.io/en/stable/index.html">pytest-django documentation</a></p>
+<p>본 문서는 django와 pytest로 작업한다는 가정으로 작성됐다.</p>
+<h3>시나리오</h3>
+<p>기존 <code>Person</code> 모델에 있던 <code>email</code> 필드를 별도의 새로운 모델인 <code>Profile</code>로 분리하고, 데이터를 이전하는 작업을 진행합니다.</p>
+<h3>초기 모델 (<code>0001_initial.py</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span><span class="p">,</span> <span class="n">models</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+    <span class="n">initial</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">CreateModel</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Person&#39;</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">AutoField</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">CharField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;age&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">IntegerField</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">254</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+</code></pre></div>
+
+<h3>새 모델 생성  (<code>0002_add_profile_model.py</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span><span class="p">,</span> <span class="n">models</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">CreateModel</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Profile&#39;</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">AutoField</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">254</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">OneToOneField</span><span class="p">(</span><span class="n">on_delete</span><span class="o">=</span><span class="n">models</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="s1">&#39;your_app.Person&#39;</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+</code></pre></div>
+
+<h3>데이터 마이그레이션 (<code>0003_data_migration</code>.py)</h3>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span><span class="p">,</span> <span class="n">models</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">forward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Person</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">person</span> <span class="ow">in</span> <span class="n">Person</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person</span><span class="o">=</span><span class="n">person</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">backward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Person</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">profile</span> <span class="ow">in</span> <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">person</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">person</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">email</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;0002_add_profile_model&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">RunPython</span><span class="p">(</span><span class="n">forward_migrate_email</span><span class="p">,</span> <span class="n">backward_migrate_email</span><span class="p">),</span>
+    <span class="p">]</span>
+</code></pre></div>
+
+<h3>마이그레이션 테스트 코드 (Pytest 사용)</h3>
+<p>마이그레이션 테스트는 필수적이며, 데이터 손실 없이 안전하게 이전되었는지 확인할 수 있습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">connection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">person.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrate</span><span class="p">,</span> <span class="n">load_class</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_profile_migration</span><span class="p">():</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="s1">&#39;person&#39;</span>
+
+    <span class="c1"># rollback</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">)</span>
+
+    <span class="n">PersonOld</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 초기 데이터 생성</span>
+    <span class="n">PersonOld</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">28</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s1">&#39;alice@example.com&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 마이그레이션 실행</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0003_data_migration&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 마이그레이션 후 데이터 확인</span>
+    <span class="n">ProfileNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0003_data_migration&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 데이터 이전 확인</span>
+    <span class="n">alice_profile</span> <span class="o">=</span> <span class="n">ProfileNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">person__name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">alice_profile</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;alice@example.com&#39;</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_profile_rollback</span><span class="p">():</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="s1">&#39;person&#39;</span>
+
+    <span class="c1"># 롤백 테스트</span>
+    <span class="n">PersonNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0003_data_migration&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">ProfileNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0003_data_migration&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 초기 데이터 생성</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">28</span><span class="p">)</span>
+    <span class="n">ProfileNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person_id</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s1">&#39;alice@example.com&#39;</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="c1"># 롤백 후 데이터 확인</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 데이터 확인</span>
+    <span class="n">PersonOld</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonOld</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;alice@example.com&#39;</span>
+</code></pre></div>
+
+<p>person/utils.py</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">django.db.migrations.executor</span><span class="w"> </span><span class="kn">import</span> <span class="n">MigrationExecutor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Model</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="n">migration_name</span><span class="p">,</span> <span class="n">model_app_name</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Model</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Params:</span>
+<span class="sd">      - app_name: ex. proposal, account, ...</span>
+<span class="sd">      - migration_name: ex: 0096_remove_assessmentversion_after_commission_price_and_more</span>
+<span class="sd">      - model_app_name: like app_name</span>
+<span class="sd">      - model_name: Model class name. ex: Assessment, Order</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">executor</span> <span class="o">=</span> <span class="n">MigrationExecutor</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="n">old_state</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">project_state</span><span class="p">((</span><span class="n">app_name</span><span class="p">,</span> <span class="n">migration_name</span><span class="p">))</span>
+
+    <span class="c1"># Load the old version of the model dynamically</span>
+    <span class="k">return</span> <span class="n">old_state</span><span class="o">.</span><span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="n">model_app_name</span><span class="p">,</span> <span class="n">model_name</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">migration_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Params:</span>
+<span class="sd">        - app_name: ex. proposal, account, ...</span>
+<span class="sd">        - migration_name: ex: 0096_remove_assessmentversion_after_commission_price_and_more</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">executor</span> <span class="o">=</span> <span class="n">MigrationExecutor</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">app_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">migration_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># Migrate to the latest version</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">loader</span><span class="o">.</span><span class="n">graph</span><span class="o">.</span><span class="n">leaf_nodes</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[(</span><span class="n">app_name</span><span class="p">,</span> <span class="n">migration_name</span><span class="p">)]</span>
+
+    <span class="n">executor</span><span class="o">.</span><span class="n">migrate</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>pytest 설정 (pytest.ini)</h3>
+<div class="highlight"><pre><span></span><code><span class="k">[pytest]</span>
+<span class="na">DJANGO_SETTINGS_MODULE</span><span class="o">=</span><span class="s">test_project.settings</span>
+<span class="na">addopts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">--reuse-db --disable-warnings --nomigrations</span>
+<span class="na">python_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">test*.py</span>
+<span class="na">python_functions</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">test*</span>
+</code></pre></div>
+
+<p>Django 마이그레이션을 이용하면 모델의 구조가 변경될 때 데이터의 안전한 이전 및 복구가 가능합니다. Pytest를 활용한 마이그레이션 테스트는 이 과정에서 필수적으로 데이터 무결성을 보장합니다.</p>
+<h2>Troubleshooting</h2>
+<p>위 테스트 코드는 잘 동작할 것 같지만, 아래와 같은 에러를 발생한다.</p>
+<p><code>MigrationExecutor</code> 내</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image.png"></p>
+<p><code>MigrationExecutor</code>의 <code>self.loader.graph.node_map</code>이 빈 값이라 발생하는 에러</p>
+<p><code>node_map</code>은 <code>MigrationLoader</code>에서 <code>load_disk</code>함수에서 빌드가 되고있음</p>
+<p>(MigrationLoader class 내)</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%201.png"></p>
+<p>그 중 <code>migrations_module</code>함수내에서 <code>settings.MIGRATION_MODULES</code> 설정이 값이 있는거 처럼 보이지만 <code>None</code>을 반환하면서 발생하는 이슈로 보임</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%202.png"></p>
+<p><code>settings.MIGRATION_MODULES</code>를 확인 시 <code>pytest_django</code>의 fixture로 mocking되있음을 알 수 있음</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%203.png"></p>
+<p><img alt="스크린샷 2025-04-03 오후 3.08.08.png" src="../images/pytest_django_migration/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2025-04-03_%E1%84%8B%E1%85%A9%E1%84%92%E1%85%AE_3.08.08.png"></p>
+<p><code>pytest_django</code>에서 <code>settings.MIGRATION_MODULES</code>를 mocking하는 코드:</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%204.png"></p>
+<p><a href="https://github.com/pytest-dev/pytest-django/blob/main/pytest_django/fixtures.py#L340">pytest-django fixtures source code (GitHub)</a></p>
+<p>이는 <code>django_db_use_migrations</code>가 True가 아닐 시 적용하는 설정</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%205.png"></p>
+<p>이는 <code>—-no-migrations</code>을 사용 시 발생함</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%206.png"></p>
+<p><a href="https://pytest-django.readthedocs.io/en/stable/database.html#disable-migrations">Disabling migrations with pytest-django</a></p>
+<p>테스트 시 <code>pytest.ini</code> 의 설정값, <code>—nomigrations</code> 사용 확인</p>
+<p><img alt="스크린샷 2025-04-03 오후 5.30.11.png" src="../images/pytest_django_migration/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2025-04-03_%E1%84%8B%E1%85%A9%E1%84%92%E1%85%AE_5.30.11.png"></p>
+<h2>Alternatively</h2>
+<p>로컬에서 테스트 시 매번 <code>—-migrations</code> 옵션을 사용하기 힘들기에 대체 방안을 찾았다</p>
+<div class="highlight"><pre><span></span><code><span class="o">...</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.test.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">override_settings</span>
+<span class="o">...</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span>
+<span class="nd">@override_settings</span><span class="p">(</span><span class="n">MIGRATION_MODULES</span><span class="o">=</span><span class="p">{})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_profile_rollback</span><span class="p">():</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="s1">&#39;person&#39;</span>
+
+    <span class="c1"># 롤백 테스트</span>
+    <span class="n">PersonNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">ProfileNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 초기 데이터 생성</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">28</span><span class="p">)</span>
+    <span class="n">ProfileNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person_id</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s1">&#39;alice@example.com&#39;</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="c1"># 롤백 후 데이터 확인</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 데이터 확인</span>
+    <span class="n">PersonOld</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonOld</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;alice@example.com&#39;</span>
+</code></pre></div>
+
+<p><code>pytest_django</code>가 <code>settings.MIGRATION_MODULES</code>를 mocking하는 부분을 활용한 방법이다.</p>
+<p>mocking을 기본값으로 돌릴 시 기존 방법으로 동작한다.</p>
+<h2>Troubleshooting 2</h2>
+<h3>새 모델 생성  (<code>0002_add_profile_model.py</code>)</h3>
+<div class="highlight"><pre><span></span><code><span class="c1"># Generated by Django 5.2 on 2025-04-03 09:04</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">django.db.models.deletion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span><span class="p">,</span> <span class="n">models</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">forward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Person</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">person</span> <span class="ow">in</span> <span class="n">Person</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person</span><span class="o">=</span><span class="n">person</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">backward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">profile</span> <span class="ow">in</span> <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">person</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">person</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">email</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+    <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">CreateModel</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Profile&#39;</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">AutoField</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">serialize</span><span class="o">=</span><span class="kc">False</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">254</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">django</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">deletion</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="s1">&#39;person.person&#39;</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">),</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">RunPython</span><span class="p">(</span><span class="n">forward_migrate_email</span><span class="p">,</span> <span class="n">backward_migrate_email</span><span class="p">)</span>
+    <span class="p">]</span>
+</code></pre></div>
+
+<p>아래와 같은 경우 혹은 RunPython 뒤 추가 schema migration이 있는 경우 pytest_django는 테스트 케이스 실행 전 migration 한 DDL을 rollback하려고 한다.</p>
+<p>그로 인해 아래와 같은 에러가 발생 한다.</p>
+<p><img alt="image.png" src="../images/pytest_django_migration/image%207.png"></p>
+<p><strong>에러 메시지:</strong></p>
+<p><strong>django.db.transaction.TransactionManagementError: Executing DDL statements while in a transaction on databases that can't perform a rollback is prohibited.</strong></p>
+<p>MySQL은 DDL rollback을 지원하지 않음</p>
+<p><a href="https://dev.mysql.com/doc/refman/8.0/en/cannot-roll-back.html">MySQL rollback limitations</a></p>
+<h3>해결방안</h3>
+<p>django_db(transaction=True)사용 시 자동 rollback되는 transaction이 아니라 main transaction을 사용하여 transaction 관련 테스트를 할 수 있다. 다만 rollback을 수동으로 관리해야 한다는 이슈가 있다(schema, data 모두)</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pytest</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">connection</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">person.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrate</span><span class="p">,</span> <span class="n">load_class</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.test.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">override_settings</span>
+
+<span class="c1"># migration teardown</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">migration_teardown</span><span class="p">():</span>
+    <span class="c1"># Ensure that the database is rolled back after each test</span>
+    <span class="k">yield</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span><span class="p">(</span><span class="n">transaction</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nd">@override_settings</span><span class="p">(</span><span class="n">MIGRATION_MODULES</span><span class="o">=</span><span class="p">{})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_profile_migration</span><span class="p">(</span><span class="n">migration_teardown</span><span class="p">):</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="s1">&#39;person&#39;</span>
+
+    <span class="c1"># rollback</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">)</span>
+
+    <span class="n">PersonOld</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 초기 데이터 생성</span>
+    <span class="n">PersonOld</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">28</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s1">&#39;alice@example.com&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 마이그레이션 실행</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 마이그레이션 후 데이터 확인</span>
+    <span class="n">ProfileNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 데이터 이전 확인</span>
+    <span class="n">alice_profile</span> <span class="o">=</span> <span class="n">ProfileNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">person__name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">alice_profile</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;alice@example.com&#39;</span>
+
+    <span class="c1"># 테스트 데이터 정리</span>
+    <span class="n">alice_profile</span><span class="o">.</span><span class="n">person</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+    <span class="n">alice_profile</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">django_db</span><span class="p">(</span><span class="n">transaction</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="nd">@override_settings</span><span class="p">(</span><span class="n">MIGRATION_MODULES</span><span class="o">=</span><span class="p">{})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">test_profile_rollback</span><span class="p">(</span><span class="n">migration_teardown</span><span class="p">):</span>
+    <span class="n">app_name</span> <span class="o">=</span> <span class="s1">&#39;person&#39;</span>
+
+    <span class="c1"># 롤백 테스트</span>
+    <span class="n">PersonNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">ProfileNew</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0002_remove_person_email_profile&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 초기 데이터 생성</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">,</span> <span class="n">age</span><span class="o">=</span><span class="mi">28</span><span class="p">)</span>
+    <span class="n">ProfileNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person_id</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="s1">&#39;alice@example.com&#39;</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;&#39;</span>
+
+    <span class="c1"># 롤백 후 데이터 확인</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">)</span>
+
+    <span class="c1"># 데이터 확인</span>
+    <span class="n">PersonOld</span> <span class="o">=</span> <span class="n">load_class</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">,</span> <span class="n">app_name</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">person</span> <span class="o">=</span> <span class="n">PersonOld</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">==</span> <span class="s1">&#39;alice@example.com&#39;</span>
+
+    <span class="c1"># 테스트 데이터 정리</span>
+    <span class="n">migrate</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="n">PersonNew</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Alice&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</code></pre></div>
+
+<p><a href="https://pytest-django.readthedocs.io/en/latest/database.html#testing-transactions">Testing transactions with pytest-django</a>
+<a href="https://pytest-django.readthedocs.io/en/latest/helpers.html#pytest.mark.django_db">pytest-django helper markers</a></p>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://blog.i544c.com/tag/backend.html">backend</a></li>
+					<li><a href="https://blog.i544c.com/tag/database.html">database</a></li>
+					<li><a href="https://blog.i544c.com/tag/django.html">django</a></li>
+					<li><a href="https://blog.i544c.com/tag/migration.html">migration</a></li>
+					<li><a href="https://blog.i544c.com/tag/unittest.html">unittest</a></li>
+					<li><a href="https://blog.i544c.com/tag/pytest.html">pytest</a></li>
+					<li><a href="https://blog.i544c.com/tag/pytest-django.html">pytest-django</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+	</body>
+</html>
