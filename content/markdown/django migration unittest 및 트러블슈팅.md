@@ -432,4 +432,5 @@ def test_profile_rollback(migration_teardown):
 ```
 
 [Testing transactions with pytest-django](https://pytest-django.readthedocs.io/en/latest/database.html#testing-transactions)
+
 [pytest-django helper markers](https://pytest-django.readthedocs.io/en/latest/helpers.html#pytest.mark.django_db)
