@@ -194,7 +194,7 @@
 &lt;p&gt;&lt;img alt="image.png" src="../images/pytest_django_migration/image%202.png"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;code&gt;settings.MIGRATION_MODULES&lt;/code&gt;를 확인 시 &lt;code&gt;pytest_django&lt;/code&gt;의 fixture로 mocking되있음을 알 수 있음&lt;/p&gt;
 &lt;p&gt;&lt;img alt="image.png" src="../images/pytest_django_migration/image%203.png"&gt;&lt;/p&gt;
-&lt;p&gt;&lt;img alt="스크린샷 2025-04-03 오후 3.08.08.png" src="../images/pytest_django_migration/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2025-04-03_%E1%84%8B%E1%85%A9%E1%84%92%E1%85%AE_3.08.08.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="스크린샷 2025-04-03 오후 3.08.08.png" src="../images/pytest_django_migration/image%208.png"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;code&gt;pytest_django&lt;/code&gt;에서 &lt;code&gt;settings.MIGRATION_MODULES&lt;/code&gt;를 mocking하는 코드:&lt;/p&gt;
 &lt;p&gt;&lt;img alt="image.png" src="../images/pytest_django_migration/image%204.png"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;a href="https://github.com/pytest-dev/pytest-django/blob/main/pytest_django/fixtures.py#L340"&gt;pytest-django fixtures source code (GitHub)&lt;/a&gt;&lt;/p&gt;
@@ -204,7 +204,7 @@
 &lt;p&gt;&lt;img alt="image.png" src="../images/pytest_django_migration/image%206.png"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;a href="https://pytest-django.readthedocs.io/en/stable/database.html#disable-migrations"&gt;Disabling migrations with pytest-django&lt;/a&gt;&lt;/p&gt;
 &lt;p&gt;테스트 시 &lt;code&gt;pytest.ini&lt;/code&gt; 의 설정값, &lt;code&gt;—nomigrations&lt;/code&gt; 사용 확인&lt;/p&gt;
-&lt;p&gt;&lt;img alt="스크린샷 2025-04-03 오후 5.30.11.png" src="../images/pytest_django_migration/%E1%84%89%E1%85%B3%E1%84%8F%E1%85%B3%E1%84%85%E1%85%B5%E1%86%AB%E1%84%89%E1%85%A3%E1%86%BA_2025-04-03_%E1%84%8B%E1%85%A9%E1%84%92%E1%85%AE_5.30.11.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="스크린샷 2025-04-03 오후 5.30.11.png" src="../images/pytest_django_migration/image%209.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Alternatively&lt;/h2&gt;
 &lt;p&gt;로컬에서 테스트 시 매번 &lt;code&gt;—-migrations&lt;/code&gt; 옵션을 사용하기 힘들기에 대체 방안을 찾았다&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;...&lt;/span&gt;
