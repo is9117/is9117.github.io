@@ -203,7 +203,7 @@
 &lt;p&gt;이는 &lt;code&gt;—-no-migrations&lt;/code&gt;을 사용 시 발생함&lt;/p&gt;
 &lt;p&gt;&lt;img alt="image.png" src="../images/pytest_django_migration/image%206.png"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;a href="https://pytest-django.readthedocs.io/en/stable/database.html#disable-migrations"&gt;Disabling migrations with pytest-django&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;테스트 시 &lt;code&gt;pytest.ini&lt;/code&gt; 의 설정값, &lt;code&gt;—nomigrations&lt;/code&gt; 사용 확인&lt;/p&gt;
+&lt;p&gt;테스트 시 &lt;code&gt;pytest.ini&lt;/code&gt; 의 설정값, &lt;code&gt;—-nomigrations&lt;/code&gt; 사용 확인&lt;/p&gt;
 &lt;p&gt;&lt;img alt="스크린샷 2025-04-03 오후 5.30.11.png" src="../images/pytest_django_migration/image%209.png"&gt;&lt;/p&gt;
 &lt;h2&gt;Alternatively&lt;/h2&gt;
 &lt;p&gt;로컬에서 테스트 시 매번 &lt;code&gt;—-migrations&lt;/code&gt; 옵션을 사용하기 힘들기에 대체 방안을 찾았다&lt;/p&gt;

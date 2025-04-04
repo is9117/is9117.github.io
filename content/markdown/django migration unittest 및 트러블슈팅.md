@@ -255,7 +255,7 @@ Django 마이그레이션을 이용하면 모델의 구조가 변경될 때 데�
 
 [Disabling migrations with pytest-django](https://pytest-django.readthedocs.io/en/stable/database.html#disable-migrations)
 
-테스트 시 `pytest.ini` 의 설정값, `—nomigrations` 사용 확인
+테스트 시 `pytest.ini` 의 설정값, `—-nomigrations` 사용 확인
 
 ![스크린샷 2025-04-03 오후 5.30.11.png](../images/pytest_django_migration/image%209.png)
 
