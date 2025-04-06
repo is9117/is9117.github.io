@@ -351,7 +351,7 @@
     <span class="p">]</span>
 </code></pre></div>
 
-<p>아래와 같은 경우 혹은 RunPython 뒤 추가 schema migration이 있는 경우 pytest_django는 테스트 케이스 실행 전 migration 한 DDL을 rollback하려고 한다.</p>
+<p>아래와 같은 경우 혹은 RunPython migration파일 내 schema migration이 있는 경우 pytest_django는 DDL을 rollback하려고 한다.</p>
 <p>그로 인해 아래와 같은 에러가 발생 한다.</p>
 <p><img alt="image.png" src="../images/pytest_django_migration/image%207.png"></p>
 <p><strong>에러 메시지:</strong></p>
@@ -429,6 +429,61 @@
 
 <p><a href="https://pytest-django.readthedocs.io/en/latest/database.html#testing-transactions">Testing transactions with pytest-django</a></p>
 <p><a href="https://pytest-django.readthedocs.io/en/latest/helpers.html#pytest.mark.django_db">pytest-django helper markers</a></p>
+<h3>해결방안 2</h3>
+<p>또는 아래 처럼 RunPython과 schema migration을 분리하는 방법이 있다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 0002_add_profile_model.py</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">django.db.models.deletion</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span><span class="p">,</span> <span class="n">models</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;0001_initial&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">CreateModel</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Profile&#39;</span><span class="p">,</span>
+            <span class="n">fields</span><span class="o">=</span><span class="p">[</span>
+                <span class="p">(</span><span class="s1">&#39;id&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">AutoField</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">serialize</span><span class="o">=</span><span class="kc">False</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;email&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">EmailField</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">254</span><span class="p">)),</span>
+                <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="n">models</span><span class="o">.</span><span class="n">ForeignKey</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">null</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">on_delete</span><span class="o">=</span><span class="n">django</span><span class="o">.</span><span class="n">db</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">deletion</span><span class="o">.</span><span class="n">CASCADE</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="s1">&#39;person.person&#39;</span><span class="p">)),</span>
+            <span class="p">],</span>
+        <span class="p">)</span>
+    <span class="p">]</span>
+
+<span class="o">---</span>
+
+<span class="c1"># 0003_profile_migration.py</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">django.db</span><span class="w"> </span><span class="kn">import</span> <span class="n">migrations</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">forward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Person</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Person&#39;</span><span class="p">)</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">person</span> <span class="ow">in</span> <span class="n">Person</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">person</span><span class="o">=</span><span class="n">person</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="n">person</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">backward_migrate_email</span><span class="p">(</span><span class="n">apps</span><span class="p">,</span> <span class="n">schema_editor</span><span class="p">):</span>
+    <span class="n">Profile</span> <span class="o">=</span> <span class="n">apps</span><span class="o">.</span><span class="n">get_model</span><span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;Profile&#39;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">profile</span> <span class="ow">in</span> <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+        <span class="n">person</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">person</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="n">profile</span><span class="o">.</span><span class="n">email</span>
+        <span class="n">person</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+    <span class="n">Profile</span><span class="o">.</span><span class="n">objects</span><span class="o">.</span><span class="n">all</span><span class="p">()</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Migration</span><span class="p">(</span><span class="n">migrations</span><span class="o">.</span><span class="n">Migration</span><span class="p">):</span>
+
+    <span class="n">dependencies</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;person&#39;</span><span class="p">,</span> <span class="s1">&#39;0002_add_profile_model&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">operations</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">migrations</span><span class="o">.</span><span class="n">RunPython</span><span class="p">(</span><span class="n">forward_migrate_email</span><span class="p">,</span> <span class="n">backward_migrate_email</span><span class="p">)</span>
+    <span class="p">]</span>
+</code></pre></div>
 
 		<span class="post-tags">
 			Tags:

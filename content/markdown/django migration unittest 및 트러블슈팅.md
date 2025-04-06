@@ -1,6 +1,6 @@
 Title: django migration unittest 및 트러블슈팅
 Date: 2025-04-03 16:47
-Modified: 2025-04-04 07:17
+Modified: 2025-04-07 07:32
 Tags: backend, database, django, migration, unittest, pytest, pytest-django
 Author: 박이삭
 Category: backend
@@ -344,7 +344,7 @@ class Migration(migrations.Migration):
 
 ```
 
-아래와 같은 경우 혹은 RunPython 뒤 추가 schema migration이 있는 경우 pytest_django는 테스트 케이스 실행 전 migration 한 DDL을 rollback하려고 한다.
+아래와 같은 경우 혹은 RunPython migration파일 내 schema migration이 있는 경우 pytest_django는 DDL을 rollback하려고 한다.
 
 그로 인해 아래와 같은 에러가 발생 한다.
 
@@ -434,3 +434,65 @@ def test_profile_rollback(migration_teardown):
 [Testing transactions with pytest-django](https://pytest-django.readthedocs.io/en/latest/database.html#testing-transactions)
 
 [pytest-django helper markers](https://pytest-django.readthedocs.io/en/latest/helpers.html#pytest.mark.django_db)
+
+
+### 해결방안 2
+
+또는 아래 처럼 RunPython과 schema migration을 분리하는 방법이 있다.
+
+```python
+
+# 0002_add_profile_model.py
+import django.db.models.deletion
+from django.db import migrations, models
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('person', '0001_initial'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='Profile',
+            fields=[
+                ('id', models.AutoField(primary_key=True, serialize=False)),
+                ('email', models.EmailField(max_length=254)),
+                ('person', models.ForeignKey(default=None, null=True, on_delete=django.db.models.deletion.CASCADE, to='person.person')),
+            ],
+        )
+    ]
+
+---
+
+# 0003_profile_migration.py
+from django.db import migrations
+
+def forward_migrate_email(apps, schema_editor):
+    Person = apps.get_model('person', 'Person')
+    Profile = apps.get_model('person', 'Profile')
+
+    for person in Person.objects.all():
+        Profile.objects.create(person=person, email=person.email)
+
+def backward_migrate_email(apps, schema_editor):
+    Profile = apps.get_model('person', 'Profile')
+
+    for profile in Profile.objects.all():
+        person = profile.person
+        person.email = profile.email
+        person.save()
+
+    Profile.objects.all().delete()
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('person', '0002_add_profile_model'),
+    ]
+
+    operations = [
+        migrations.RunPython(forward_migrate_email, backward_migrate_email)
+    ]
+
+```
