@@ -1,5 +1,294 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog</title><link href="https://blog.i544c.com/" rel="alternate"></link><link href="https://blog.i544c.com/feeds/all.atom.xml" rel="self"></link><id>https://blog.i544c.com/</id><updated>2025-04-07T07:32:00+09:00</updated><entry><title>django migration unittest 및 트러블슈팅</title><link href="https://blog.i544c.com/django-migration-unittest-mic-teureobeulsyuting.html" rel="alternate"></link><published>2025-04-03T16:47:00+09:00</published><updated>2025-04-07T07:32:00+09:00</updated><author><name>박이삭</name></author><id>tag:blog.i544c.com,2025-04-03:/django-migration-unittest-mic-teureobeulsyuting.html</id><summary type="html">&lt;p&gt;migration using pytest&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog</title><link href="https://blog.i544c.com/" rel="alternate"></link><link href="https://blog.i544c.com/feeds/all.atom.xml" rel="self"></link><id>https://blog.i544c.com/</id><updated>2025-05-19T13:32:00+09:00</updated><entry><title>부동소수점(float) 정밀도와 Decimal/Bigint가 필요한 이유</title><link href="https://blog.i544c.com/budongsosujeomfloat-jeongmildowa-decimalbigintga-pilyohan-iyu.html" rel="alternate"></link><published>2025-05-19T13:32:00+09:00</published><updated>2025-05-19T13:32:00+09:00</updated><author><name>박이삭</name></author><id>tag:blog.i544c.com,2025-05-19:/budongsosujeomfloat-jeongmildowa-decimalbigintga-pilyohan-iyu.html</id><summary type="html">&lt;p&gt;floating point and bigint, decimal&lt;/p&gt;</summary><content type="html">&lt;p&gt;서비스를 운영하거나 시스템을 설계하다 보면 수치 계산에서 미묘한 오차가 발생하는 경험을 하게 됩니다.
+예를 들어, Python에서 &lt;code&gt;0.1 + 0.2&lt;/code&gt;를 출력해 보면 아래와 같은 결과가 나옵니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;&amp;gt;&amp;gt;&amp;gt;&lt;/span&gt; &lt;span class="mf"&gt;0.1&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;0.2&lt;/span&gt;
+&lt;span class="mf"&gt;0.30000000000000004&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;“이게 뭐지?” 싶은 마음이 드는 건 너무나 자연스럽습니다.&lt;/p&gt;
+&lt;p&gt;이 글에서는 이런 오차가 발생하는 이유와, 정확한 수치 계산이 필요한 상황에서 &lt;strong&gt;float 대신 BigInt 혹은 Decimal을 써야 하는 이유&lt;/strong&gt;에 대해 정리해보려 합니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;float란 무엇인가?&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;float는 실수를 표현하는 가장 일반적인 데이터 타입입니다.&lt;/p&gt;
+&lt;p&gt;컴퓨터에서는 float 값을 표현할 때, 대부분 &lt;strong&gt;IEEE 754 표준&lt;/strong&gt;을 따릅니다.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="image.png" src="../images/float_bigint/image.png"&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Python의 기본 float 타입은 64비트(double precision) 부동소수점 숫자입니다.
+&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;IEEE 754의 64비트 float는 다음과 같이 구성됩니다:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;&lt;strong&gt;구성 요소&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;비트 수&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;설명&lt;/strong&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;부호(S)&lt;/td&gt;
+&lt;td&gt;1비트&lt;/td&gt;
+&lt;td&gt;양수/음수 구분&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;지수(E)&lt;/td&gt;
+&lt;td&gt;11비트&lt;/td&gt;
+&lt;td&gt;스케일 조정&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;가수(F)&lt;/td&gt;
+&lt;td&gt;52비트&lt;/td&gt;
+&lt;td&gt;실제 수치 정보&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;이 구조의 한계 때문에 &lt;strong&gt;정확히 표현할 수 없는 소수&lt;/strong&gt;가 존재하게 됩니다.&lt;/p&gt;
+&lt;p&gt;대표적인 예가 바로 0.1, 0.2 같은 십진 소수입니다. 이들은 &lt;strong&gt;2진수로 정확하게 표현되지 않기 때문에&lt;/strong&gt; 내부적으로 약간의 오차가 발생합니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;왜 계산할수록 정밀도가 떨어질까?&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;부동소수점 계산은 다음과 같은 이유로 &lt;strong&gt;누적 오차(loss of precision)&lt;/strong&gt;가 발생합니다:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;가수(Fraction)의 비트 수가 고정되어 있음 → 계산 중 일부 자리수는 &lt;strong&gt;버려짐&lt;/strong&gt;&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;반올림(Rounding)&lt;/strong&gt;이 자동 적용됨&lt;/li&gt;
+&lt;li&gt;사칙 연산의 순서에 따라 결과가 달라질 수 있음 (부동소수점은 &lt;strong&gt;비결합성&lt;/strong&gt;이 있음)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;&lt;strong&gt;예시 1: 반복 덧셈&lt;/strong&gt;&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;total&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;0.0&lt;/span&gt;
+&lt;span class="k"&gt;for&lt;/span&gt; &lt;span class="n"&gt;_&lt;/span&gt; &lt;span class="ow"&gt;in&lt;/span&gt; &lt;span class="nb"&gt;range&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1000000&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;total&lt;/span&gt; &lt;span class="o"&gt;+=&lt;/span&gt; &lt;span class="mf"&gt;1e-10&lt;/span&gt;
+
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;total&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;# 기대값: 0.1&lt;/span&gt;
+&lt;span class="c1"&gt;# 출력값: 0.09999999999994...&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;&lt;strong&gt;예시 2: 덧셈 순서에 따라 다른 결과&lt;/strong&gt;&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;1e16&lt;/span&gt;
+&lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;1e16&lt;/span&gt;
+&lt;span class="n"&gt;c&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;1.0&lt;/span&gt;
+
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;((&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;c&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;  &lt;span class="c1"&gt;# 결과: 1.0&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;c&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;  &lt;span class="c1"&gt;# 결과: 0.0&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;이런 결과는 정수형이나 Decimal로는 일어나지 않습니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;그렇다면 정밀한 계산이 필요한 경우엔?&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;정확한 수치 계산&lt;/strong&gt;이 필요한 경우, float가 아닌 아래와 같은 방식의 대안이 필요합니다:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Decimal: 고정 소수점. 반올림 오차가 없음&lt;/li&gt;
+&lt;li&gt;BigInt (혹은 arbitrary-precision int): 자릿수 제한 없이 정수 연산 가능&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3&gt;&lt;strong&gt;Decimal 예시 (Python)&lt;/strong&gt;&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;from&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;decimal&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;getcontext&lt;/span&gt;
+
+&lt;span class="n"&gt;getcontext&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;prec&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;30&lt;/span&gt;  &lt;span class="c1"&gt;# 정밀도 설정&lt;/span&gt;
+
+&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;0.1&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;0.2&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;  &lt;span class="c1"&gt;# 정확하게 0.3 출력&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;&lt;strong&gt;BigInt 예시 (Python)&lt;/strong&gt;&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;
+&lt;span class="n"&gt;b&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="c1"&gt;# 출력: 200000000000000000000...000 (총 101자리 수)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;hr&gt;
+&lt;h2&gt;Decimal과 BigInt는 어떻게 구현되어 있을까?&lt;/h2&gt;
+&lt;p&gt;단순히 "정밀하다"는 말만으로는 부족합니다.
+그렇다면 내부적으로 어떻게 float과 다르게 동작하는 걸까요?&lt;/p&gt;
+&lt;h3&gt;🔢 Decimal의 내부 구현&lt;/h3&gt;
+&lt;p&gt;Python의 &lt;code&gt;decimal.Decimal&lt;/code&gt; 타입은 &lt;strong&gt;문자열 기반의 고정 소수점(decimal fixed-point)&lt;/strong&gt; 연산을 수행합니다.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;내부적으로 숫자를 문자열 혹은 정수 배열로 분리해서 보관&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;context&lt;/code&gt;를 통해 정밀도(precision), 반올림 방식(rounding), 오버플로우 정책 등을 지정 가능&lt;/li&gt;
+&lt;li&gt;실수(float) 연산이 아닌 &lt;strong&gt;정확한 십진수 연산(decimal arithmetic)&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;내부 구조 예시 (개념적 설명)&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;123.45&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;-&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;sign&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+    &lt;span class="n"&gt;digits&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt;
+    &lt;span class="n"&gt;exponent&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;  &lt;span class="c1"&gt;# 소수점 위치&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;이처럼 float처럼 이진 표현이 아니라 &lt;strong&gt;십진수 그대로&lt;/strong&gt; 표현하므로, 0.1과 같은 숫자도 정확히 표현할 수 있습니다.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Python의 Decimal은 IEEE 754-2008 Decimal128을 일부 참고하며, 자체 구현체(C 코드)와 decimal.py (Python 구현체)를 함께 제공합니다.
+&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;&lt;strong&gt;🔢 BigInt (Arbitrary Precision Integer)&lt;/strong&gt;&lt;/h3&gt;
+&lt;p&gt;Python의 int는 &lt;strong&gt;자동으로 BigInt 모드&lt;/strong&gt;로 전환됩니다.&lt;/p&gt;
+&lt;p&gt;정해진 비트 수로 제한된 C언어의 int, long과 달리 Python은 매우 큰 수를 다룰 수 있습니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;a = 2**1024
+print(a)  # 수백 자리의 숫자도 문제 없음
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;&lt;strong&gt;내부 구조 요약&lt;/strong&gt;&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;숫자를 고정된 크기의 &lt;strong&gt;“digit 배열”&lt;/strong&gt; 로 분할해 저장&lt;/li&gt;
+&lt;li&gt;실제 연산은 자릿수 단위로 처리 (마치 초등학교식 곱셈/덧셈)&lt;/li&gt;
+&lt;li&gt;메모리가 허용하는 한 크기 제한 없이 정수 연산 가능&lt;/li&gt;
+&lt;li&gt;Python 내부적으로는 PyLongObject라는 구조체로 구현됨&lt;ul&gt;
+&lt;li&gt;기본 단위는 C의 uint32_t 혹은 uint30_t (시스템에 따라 다름)&lt;/li&gt;
+&lt;li&gt;자릿수(digit)를 리스트처럼 연결해 수를 표현&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;예: 12345678901234567890 은 내부적으로 다음처럼 표현됩니다:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="gh"&gt;#&lt;/span&gt; 계산하는 방법
+n = 12345678901234567890
+base = 2**32
+
+digits = []
+while n &amp;gt; 0:
+    digits.append(n % base)
+    n = n // base
+
+print(digits)  # [3944680146, 2874452364] (32-bit 기준, big-endian)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;이런 식으로 &lt;strong&gt;자리수 배열을 이어 붙여 수를 구성&lt;/strong&gt;하며, 덧셈, 곱셈, 제곱 등은 배열 기반 알고리즘으로 처리됩니다.&lt;/p&gt;
+&lt;h3&gt;&lt;strong&gt;✍️ 참고로&lt;/strong&gt;&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;Python의 Decimal은 표준 모듈로 decimal.py에 순수 Python으로 구현된 버전이 있으며, cdecimal이라는 고속 C 구현이 백엔드에서 사용됩니다 (Python 3.3+ 기준 기본 포함).&lt;/li&gt;
+&lt;li&gt;Java의 BigInteger, JavaScript의 BigInt, Rust의 num-bigint 등 대부분 언어들도 비슷한 방식으로 &lt;strong&gt;자릿수 기반 연산&lt;/strong&gt;을 수행합니다.&lt;/li&gt;
+&lt;li&gt;Python int는 내부적으로 자동으로 BigInt로 승격(upgrade)되므로 별도의 BigInt 타입이 없습니다.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;이러한 구현 덕분에 Python에서는 float의 한계를 넘는 고정 정밀 계산이 가능하지만,&lt;/p&gt;
+&lt;p&gt;그만큼 속도는 느리고 메모리 사용량도 크기 때문에 &lt;strong&gt;용도에 따라 신중하게 선택&lt;/strong&gt;하는 것이 중요합니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;BigInt가 필요한 실제 분야&lt;/strong&gt;&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;&lt;strong&gt;분야&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;이유&lt;/strong&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;💰 금융/회계&lt;/td&gt;
+&lt;td&gt;0.01 단위까지 오차 없이 계산되어야 함 (소수점 버림 불가)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;🔐 암호학&lt;/td&gt;
+&lt;td&gt;수십 자리 이상의 큰 수로 암호 계산 수행 (RSA 등)&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;🧪 과학/시뮬레이션&lt;/td&gt;
+&lt;td&gt;부동소수점 오차가 결과에 큰 영향을 미칠 수 있음&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;📈 데이터 분석&lt;/td&gt;
+&lt;td&gt;금액, 세금, 환율 등에서 오차가 누적되면 큰 문제 발생&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2&gt;실무 사례: 수치 오차로 인한 장애&lt;/h2&gt;
+&lt;h3&gt;💥 실제 장애 사례: 수수료 계산 오류&lt;/h3&gt;
+&lt;p&gt;한 핀테크 서비스에서 결제 금액에 따라 수수료를 계산할 때, float을 사용해 연산을 수행하고 있었습니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;fee&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;amount&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mf"&gt;0.015&lt;/span&gt;  &lt;span class="c1"&gt;# 1.5% 수수료&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;정상적으로 보이지만, 특정 금액(예: 899원)에 대해 계산된 값이 13.485000000000001처럼 출력되었고,
+이를 round(fee, 2)로 처리했을 때 13.48이 되어 &lt;strong&gt;고객에게 수수료가 덜 부과&lt;/strong&gt;되는 현상이 발생했습니다.&lt;/p&gt;
+&lt;p&gt;이 문제는 Decimal로 다음과 같이 해결했습니다:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;from&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;decimal&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;ROUND_HALF_UP&lt;/span&gt;
+
+&lt;span class="n"&gt;fee&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;899&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;0.015&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;fee&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;fee&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;quantize&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;Decimal&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;0.01&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;),&lt;/span&gt; &lt;span class="n"&gt;rounding&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="n"&gt;ROUND_HALF_UP&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;pandas / numpy에서의 float 주의점&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;pandas: float 비교는 .round() 또는 np.isclose()&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;import&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;pandas&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;as&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;pd&lt;/span&gt;
+&lt;span class="kn"&gt;import&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;numpy&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;as&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;np&lt;/span&gt;
+
+&lt;span class="n"&gt;df&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;pd&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DataFrame&lt;/span&gt;&lt;span class="p"&gt;({&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;value&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mf"&gt;0.1&lt;/span&gt; &lt;span class="o"&gt;+&lt;/span&gt; &lt;span class="mf"&gt;0.2&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;0.3&lt;/span&gt;&lt;span class="p"&gt;]})&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 비교할 때는 직접 == 하지 말고 다음 중 하나를 사용&lt;/span&gt;
+&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;eq&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;isclose&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;df&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;value&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;],&lt;/span&gt; &lt;span class="mf"&gt;0.3&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;strong&gt;numpy: 누적 연산에서 float 오차 고려&lt;/strong&gt;&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;import&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;numpy&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;as&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;np&lt;/span&gt;
+
+&lt;span class="n"&gt;a&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;ones&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="o"&gt;**&lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt; &lt;span class="o"&gt;*&lt;/span&gt; &lt;span class="mf"&gt;1e-10&lt;/span&gt;
+&lt;span class="nb"&gt;print&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;np&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;sum&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="p"&gt;))&lt;/span&gt;  &lt;span class="c1"&gt;# float64로 누적 → 오차 발생&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;NumPy는 dtype=np.float64를 사용하더라도 누적 오차는 피할 수 없습니다.
+고정소수점 처리가 필요한 경우 decimal.Decimal로 수동 연산을 해야 합니다.&lt;/p&gt;
+&lt;h3&gt;Django ORM에서 Decimal 사용하는 법&lt;/h3&gt;
+&lt;p&gt;금액, 수수료 등은 반드시 DecimalField로 정의하고, float 사용은 지양해야 합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="kn"&gt;from&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nn"&gt;django.db&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kn"&gt;import&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nc"&gt;Transaction&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;Model&lt;/span&gt;&lt;span class="p"&gt;):&lt;/span&gt;
+    &lt;span class="n"&gt;amount&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;models&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;DecimalField&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;
+        &lt;span class="n"&gt;max_digits&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;  &lt;span class="c1"&gt;# 전체 자리수&lt;/span&gt;
+        &lt;span class="n"&gt;decimal_places&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;  &lt;span class="c1"&gt;# 소수점 이하 자리수&lt;/span&gt;
+    &lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;실제로 float을 사용하면 저장 시점에 오차가 발생할 수 있고,
+데이터베이스 간 이관, 단위 테스트, 정산 등에서 일관성 문제가 생깁니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;비교 정리&lt;/strong&gt;&lt;/h2&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;&lt;strong&gt;구분&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;float&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;Decimal&lt;/strong&gt;&lt;/th&gt;
+&lt;th&gt;&lt;strong&gt;BigInt&lt;/strong&gt;&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;정밀도&lt;/td&gt;
+&lt;td&gt;약 15~17 자리&lt;/td&gt;
+&lt;td&gt;설정 가능 (무제한에 가까움)&lt;/td&gt;
+&lt;td&gt;무제한 정수&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;속도&lt;/td&gt;
+&lt;td&gt;빠름&lt;/td&gt;
+&lt;td&gt;느림&lt;/td&gt;
+&lt;td&gt;느림&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;오차 발생&lt;/td&gt;
+&lt;td&gt;있음&lt;/td&gt;
+&lt;td&gt;없음&lt;/td&gt;
+&lt;td&gt;없음&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;주요 사용처&lt;/td&gt;
+&lt;td&gt;일반 연산, 그래픽&lt;/td&gt;
+&lt;td&gt;금융, 세금&lt;/td&gt;
+&lt;td&gt;암호, 정밀 계산&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2&gt;&lt;strong&gt;정리하며&lt;/strong&gt;&lt;/h2&gt;
+&lt;p&gt;일반적인 웹/서버 개발에서는 float로도 충분할 때가 많습니다.&lt;/p&gt;
+&lt;p&gt;하지만 다음과 같은 경우엔 &lt;strong&gt;float 사용을 반드시 재검토해야 합니다.&lt;/strong&gt;&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;금액 계산을 다룰 때 (특히 복합 계산, 환율 변환 등)&lt;/li&gt;
+&lt;li&gt;반복 연산이 많은 시뮬레이션이나 모델링&lt;/li&gt;
+&lt;li&gt;보안/암호 관련 코드&lt;/li&gt;
+&lt;li&gt;분산 시스템에서 수치 결과의 정합성이 중요한 경우&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;실제 현업에서도 이로 인한 버그나 사고는 생각보다 자주 발생합니다.&lt;/p&gt;
+&lt;p&gt;지금 작성하는 코드에서 “정밀도가 정말 중요한가?“를 항상 한 번은 자문해보는 습관을 가지는 것이 좋습니다.&lt;/p&gt;</content><category term="data"></category><category term="data structure"></category></entry><entry><title>django migration unittest 및 트러블슈팅</title><link href="https://blog.i544c.com/django-migration-unittest-mic-teureobeulsyuting.html" rel="alternate"></link><published>2025-04-03T16:47:00+09:00</published><updated>2025-04-07T07:32:00+09:00</updated><author><name>박이삭</name></author><id>tag:blog.i544c.com,2025-04-03:/django-migration-unittest-mic-teureobeulsyuting.html</id><summary type="html">&lt;p&gt;migration using pytest&lt;/p&gt;</summary><content type="html">&lt;h2&gt;Introduction&lt;/h2&gt;
 &lt;p&gt;스키마(schema) 및 데이터(data) 마이그레이션은 안정적인 서비스 운영을 위한 필수 요소이다. 마이그레이션 스크립트가 안정적으로 동작하는지 검증하기 위해서는 테스트 코드 작성이 반드시 필요하다. 마이그레이션 스크립트의 테스트 코드 작성을 통해 다음과 같은 장점을 얻을 수 있다.&lt;/p&gt;
 &lt;ol&gt;
 &lt;li&gt;&lt;strong&gt;버그 사전 발견&lt;/strong&gt;&lt;ul&gt;
