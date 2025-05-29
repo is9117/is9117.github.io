@@ -80,31 +80,41 @@
     document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
   }
 
-  let visitorId = getCookie('visitor_id');
-  if (!visitorId) {
-    visitorId = crypto.randomUUID();
-    setCookie('visitor_id', visitorId, 365);
+  function fetchViewCountSidebar() {
+	let visitorId = getCookie('visitor_id');
+	if (!visitorId) {
+		visitorId = crypto.randomUUID();
+		setCookie('visitor_id', visitorId, 365);
+	}
+
+	const payload = {
+		path: window.location.pathname,
+		visitor_id: visitorId,
+		date: new Date().toISOString().slice(0, 10)
+	};
+
+	fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
+		method: "GET",
+		credentials: "include"
+	})
+	.then(res => res.json())
+	.then(data => {
+		const viewCountEl = document.getElementById("view-count");
+		if (viewCountEl && data.total_visits !== undefined) {
+		viewCountEl.textContent = data.total_visits;
+		}
+		console.log("Visitor stats:", data);
+	})
+	.catch(err => console.error("Failed to fetch stats", err));
   }
 
-  const payload = {
-    path: window.location.pathname,
-    visitor_id: visitorId,
-    date: new Date().toISOString().slice(0, 10)
-  };
-
-  fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
-    method: "GET",
-    credentials: "include"
-  })
-  .then(res => res.json())
-  .then(data => {
-    const viewCountEl = document.getElementById("view-count");
-    if (viewCountEl && data.total_visits !== undefined) {
-      viewCountEl.textContent = data.total_visits;
+  window.addEventListener("pageshow", function (event) {
+    // If coming back from bfcache, force re-fetch
+    if (event.persisted) {
+      console.log("Page restored from bfcache. Refetching...");
     }
-    console.log("Visitor stats:", data);
-  })
-  .catch(err => console.error("Failed to fetch stats", err));
+    fetchViewCountSidebar();  // Always fetch whether cached or not
+  });
 })();
 </script>		<div class="content container">
 <div class="post">
@@ -221,26 +231,36 @@
 	    document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
 	  }
 
-	  let visitorId = getCookie('visitor_id');
-	  if (!visitorId) {
-	    visitorId = crypto.randomUUID();
-	    setCookie('visitor_id', visitorId, 365);
-	  }
+    function fetchViewCountArticle() {
+      let visitorId = getCookie('visitor_id');
+      if (!visitorId) {
+        visitorId = crypto.randomUUID();
+        setCookie('visitor_id', visitorId, 365);
+      }
 
-	  fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
-	    method: "GET",
-	    credentials: "include"
-	  })
-	  .then(res => res.json())
-	  .then(data => {
-	    const countElement = document.getElementById("visitor-count");
-	    if (countElement && data && data.path_visits) {
-	      countElement.textContent = "Page Views: " + data.path_visits;
-	    }
-	  })
-	  .catch(err => {
-	    console.error("Failed to fetch stats", err);
-	  });
+      fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
+        method: "GET",
+        credentials: "include"
+      })
+      .then(res => res.json())
+      .then(data => {
+        const countElement = document.getElementById("visitor-count");
+        if (countElement && data && data.path_visits) {
+          countElement.textContent = "Page Views: " + data.path_visits;
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch stats", err);
+      });
+    }
+    
+    window.addEventListener("pageshow", function (event) {
+      // If coming back from bfcache, force re-fetch
+      if (event.persisted) {
+        console.log("Page restored from bfcache. Refetching...");
+      }
+      fetchViewCountArticle();  // Always fetch whether cached or not
+    });
 	})();
 	</script>
 </div>

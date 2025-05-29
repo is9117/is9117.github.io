@@ -9,7 +9,7 @@ httpd = http.server.HTTPServer(('0.0.0.0', PORT), http.server.SimpleHTTPRequestH
 
 # Create a secure context
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain(certfile='../blog.i544c.com+4.pem', keyfile='../blog.i544c.com+4-key.pem')
+context.load_cert_chain(certfile='../blog.i544c.com.pem', keyfile='../blog.i544c.com-key.pem')
 
 httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
 
