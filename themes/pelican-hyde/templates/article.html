@@ -26,53 +26,5 @@
 	{% endif %}
 
 	{% include 'fragments/disqus.html' %}
-
-	<div id="visitor-count" style="margin-top: 1em; font-style: italic; color: gray;">
-	  Loading visit count...
-	</div>
-	<script>
-	(function() {
-	  function getCookie(name) {
-	    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-	    return match ? match[2] : null;
-	  }
-
-	  function setCookie(name, value, days) {
-	    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-	    document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
-	  }
-
-    function fetchViewCountArticle() {
-      let visitorId = getCookie('visitor_id');
-      if (!visitorId) {
-        visitorId = crypto.randomUUID();
-        setCookie('visitor_id', visitorId, 365);
-      }
-
-      fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
-        method: "GET",
-        credentials: "include"
-      })
-      .then(res => res.json())
-      .then(data => {
-        const countElement = document.getElementById("visitor-count");
-        if (countElement && data && data.path_visits) {
-          countElement.textContent = "Page Views: " + data.path_visits;
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch stats", err);
-      });
-    }
-    
-    window.addEventListener("pageshow", function (event) {
-      // If coming back from bfcache, force re-fetch
-      if (event.persisted) {
-        console.log("Page restored from bfcache. Refetching...");
-      }
-      fetchViewCountArticle();  // Always fetch whether cached or not
-    });
-	})();
-	</script>
 </div>
 {% endblock %}

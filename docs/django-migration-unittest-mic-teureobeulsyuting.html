@@ -47,7 +47,6 @@
 			</h1>
 			<p class="lead"></p>
 			<p class="lead"> </p>
-			<p id="cumulative-site-views" class="lead">Total Views: <span id="view-count">...</span></p>
 			<p></p>
 		</div>
 			<ul class="sidebar-nav">
@@ -67,56 +66,7 @@
 			</a>
 		</nav>
 	</div>
-</div>
-<script>
-(function() {
-  function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? match[2] : null;
-  }
-
-  function setCookie(name, value, days) {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-    document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
-  }
-
-  function fetchViewCountSidebar() {
-	let visitorId = getCookie('visitor_id');
-	if (!visitorId) {
-		visitorId = crypto.randomUUID();
-		setCookie('visitor_id', visitorId, 365);
-	}
-
-	const payload = {
-		path: window.location.pathname,
-		visitor_id: visitorId,
-		date: new Date().toISOString().slice(0, 10)
-	};
-
-	fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
-		method: "GET",
-		credentials: "include"
-	})
-	.then(res => res.json())
-	.then(data => {
-		const viewCountEl = document.getElementById("view-count");
-		if (viewCountEl && data.total_visits !== undefined) {
-		viewCountEl.textContent = data.total_visits;
-		}
-		console.log("Visitor stats:", data);
-	})
-	.catch(err => console.error("Failed to fetch stats", err));
-  }
-
-  window.addEventListener("pageshow", function (event) {
-    // If coming back from bfcache, force re-fetch
-    if (event.persisted) {
-      console.log("Page restored from bfcache. Refetching...");
-    }
-    fetchViewCountSidebar();  // Always fetch whether cached or not
-  });
-})();
-</script>		<div class="content container">
+</div>		<div class="content container">
 <div class="post">
 	<h1 class="post-title">django migration unittest 및 트러블슈팅</h1>
 	<span class="post-date">Thu 03 April 2025</span>
@@ -548,54 +498,6 @@
 			</ul>
 		</span>
 
-
-	<div id="visitor-count" style="margin-top: 1em; font-style: italic; color: gray;">
-	  Loading visit count...
-	</div>
-	<script>
-	(function() {
-	  function getCookie(name) {
-	    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-	    return match ? match[2] : null;
-	  }
-
-	  function setCookie(name, value, days) {
-	    const expires = new Date(Date.now() + days * 864e5).toUTCString();
-	    document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
-	  }
-
-    function fetchViewCountArticle() {
-      let visitorId = getCookie('visitor_id');
-      if (!visitorId) {
-        visitorId = crypto.randomUUID();
-        setCookie('visitor_id', visitorId, 365);
-      }
-
-      fetch("https://api.i544c.com/count?path=" + encodeURIComponent(window.location.pathname), {
-        method: "GET",
-        credentials: "include"
-      })
-      .then(res => res.json())
-      .then(data => {
-        const countElement = document.getElementById("visitor-count");
-        if (countElement && data && data.path_visits) {
-          countElement.textContent = "Page Views: " + data.path_visits;
-        }
-      })
-      .catch(err => {
-        console.error("Failed to fetch stats", err);
-      });
-    }
-    
-    window.addEventListener("pageshow", function (event) {
-      // If coming back from bfcache, force re-fetch
-      if (event.persisted) {
-        console.log("Page restored from bfcache. Refetching...");
-      }
-      fetchViewCountArticle();  // Always fetch whether cached or not
-    });
-	})();
-	</script>
 </div>
 		</div>
 		<script>

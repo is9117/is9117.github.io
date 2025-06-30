@@ -1,6 +1,6 @@
 Title: 부동소수점(float) 정밀도와 Decimal/Bigint가 필요한 이유
 Date: 2025-05-19 13:32
-Date: 2025-05-19 14:24
+Modified: 2025-05-19 14:24
 Tags: data structure
 Author: 박이삭
 Category: data
