@@ -1,4 +1,4 @@
-Title: MySQL(8.0+) ”EXPLAIN" Explained
+Title: MySQL(8.0+) "EXPLAIN" Explained
 Date: 2025-06-30 13:15
 Modified: 2025-06-30 13:26
 Tags: mysql, optimization, backend, database
