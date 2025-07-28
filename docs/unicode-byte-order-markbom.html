@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="Unicode Byte Order Mark(BOM)" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://blog.i544c.com/unicode-byte-order-markbom.html" />
+		<meta property="og:image" content="https://blog.i544c.com/images/profile.jpeg" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://blog.i544c.com/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://blog.i544c.com/feeds/backend.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://blog.i544c.com/">
+					<img class="profile-picture" src="https://blog.i544c.com/images/profile.jpeg">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="mailto:is9117@me.com">
+						<i class="fa fa-envelope"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://x.com/i544c_park" target="_blank">
+						<i class="fa fa-twitter"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://solved.ac/profile/is9117" target="_blank">
+						<i class="fa fa-trophy"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://blog.i544c.com/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">Unicode Byte Order Mark(BOM)</h1>
+	<span class="post-date">Mon 28 July 2025</span>
+	<hr>
+<p>텍스트 파일을 다루다 보면 가끔 인코딩 문제가 발생합니다. 특히 다국어 지원이나 크로스플랫폼 환경에서 Unicode 파일을 열 때, 파일의 시작에 숨어 있는 "Byte Order Mark(BOM)"가 그 원인이 될 수 있습니다. 오늘은 BOM이 무엇인지, 왜 필요한지, 그리고 어떻게 다루는지에 대해 자세히 알아보겠습니다. Python 예시를 중심으로 실무적인 팁도 공유하도록 하겠습니다.</p>
+<h2>BOM의 소개</h2>
+<p>Byte Order Mark(BOM)는 Unicode 텍스트 파일의 시작에 삽입되는 특수한 바이트 시퀀스로, 파일의 인코딩 형식(예: UTF-8, UTF-16, UTF-32)과 바이트 순서(Endianness)를 나타냅니다. Unicode 표준에서 U+FEFF (Zero Width No-Break Space) 문자로 정의되어 있으며, 파일의 "서명(signature)" 역할을 합니다.</p>
+<p>BOM은 1990년대 Unicode가 도입될 때부터 사용되었으며, 텍스트 에디터나 프로그램이 파일을 올바르게 해석할 수 있도록 돕습니다. 예를 들어, UTF-16 파일에서 빅 엔디안(Big Endian)과 리틀 엔디안(Little Endian)을 구분하는 데 필수적입니다.</p>
+<h2>목적</h2>
+<p>BOM의 주요 목적은 다음과 같습니다:</p>
+<ul>
+<li><strong>인코딩 자동 탐지</strong>: 파일을 열 때 프로그램이 UTF-8인지 UTF-16인지 자동으로 판단할 수 있게 합니다.</li>
+<li><strong>바이트 순서 식별</strong>: 멀티바이트 인코딩(UTF-16, UTF-32)에서 빅 엔디안(BE)과 리틀 엔디안(LE)을 구분합니다. 이는 CPU 아키텍처(예: Intel vs. PowerPC)에 따라 바이트 순서가 다를 수 있는 문제를 해결합니다.</li>
+<li><strong>호환성 향상</strong>: 크로스플랫폼 환경에서 텍스트 파일의 일관성을 유지합니다.</li>
+</ul>
+<p>없이 파일을 열면 인코딩을 추측해야 하므로 오해석(예: mojibake, 문자 깨짐)이 발생할 수 있습니다.</p>
+<h2>Signature</h2>
+<p>BOM은 인코딩에 따라 고유한 바이트 시퀀스를 가집니다. 아래는 주요 인코딩의 BOM 시그니처입니다 (헥사(hex) 표기):</p>
+<ul>
+<li><strong>UTF-8</strong>: <code>EF BB BF</code></li>
+<li><strong>UTF-16 BE (Big Endian)</strong>: <code>FE FF</code></li>
+<li><strong>UTF-16 LE (Little Endian)</strong>: <code>FF FE</code></li>
+<li><strong>UTF-32 BE</strong>: <code>00 00 FE FF</code></li>
+<li><strong>UTF-32 LE</strong>: <code>FF FE 00 00</code></li>
+</ul>
+<p>이 시그니처는 파일의 맨 앞에 위치하며, 텍스트로 보이지 않도록 설계되었습니다. 하지만 일부 환경에서 BOM이 보이거나 문제를 일으킬 수 있습니다.</p>
+<h2>사용법</h2>
+<p>BOM을 사용하는 방법은 간단합니다:</p>
+<ul>
+<li><strong>파일 생성 시 추가</strong>: 텍스트 에디터(예: Notepad++)나 프로그래밍 라이브러리를 통해 파일을 저장할 때 "UTF-8 with BOM" 옵션을 선택합니다.</li>
+<li><strong>프로그램에서 삽입</strong>: Python에서 파일을 쓸 때 BOM을 직접 추가할 수 있습니다.</li>
+</ul>
+<p>예시 (Python에서 UTF-8 BOM 추가):</p>
+<div class="highlight"><pre><span></span><code><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;example.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8-sig&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Hello, Unicode!&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>여기서 'utf-8-sig' 인코딩은 BOM을 자동으로 추가합니다.</p>
+<h2>장점</h2>
+<p>BOM의 장점은 다음과 같습니다:</p>
+<ul>
+<li><strong>자동화</strong>: 프로그램이 인코딩을 추측하지 않고 정확히 알 수 있어 오류를 줄입니다.</li>
+<li><strong>호환성</strong>: Windows 같은 시스템에서 기본적으로 지원되어, 다국어 텍스트 처리에 유용합니다.</li>
+<li><strong>간단함</strong>: 파일 헤더처럼 작동해 추가 메타데이터 없이 인코딩 정보를 전달합니다.</li>
+</ul>
+<p>특히 대용량 텍스트 파일이나 국제화 프로젝트에서 유리합니다.</p>
+<h2>단점</h2>
+<p>반면 단점도 있습니다:</p>
+<ul>
+<li><strong>호환성 문제</strong>: 일부 오래된 프로그램(예: PHP 스크립트)이나 UTF-8-only 시스템에서 BOM이 "ï»¿"처럼 보이거나 에러를 유발합니다.</li>
+<li><strong>불필요한 오버헤드</strong>: UTF-8에서 BOM이 필수가 아니므로, 파일 크기가 약간 증가하고(3바이트) XML/JSON 같은 형식에서 파싱 오류를 일으킬 수 있습니다.</li>
+<li><strong>탐지 어려움</strong>: BOM을 무시하지 않으면 스크립트나 API에서 예기치 않은 문자로 처리될 수 있습니다.</li>
+</ul>
+<p>이 때문에 일부 개발자들은 BOM을 피하고, 인코딩을 명시적으로 지정하는 것을 선호합니다.</p>
+<h2>탐지방법(예시, utf-8, utf-16, utf-32, both endian)</h2>
+<p>BOM을 탐지하는 방법은 다양합니다. 아래에서 UTF-8, UTF-16, UTF-32 (BE/LE 모두)의 예시를 중심으로 설명하겠습니다.</p>
+<p>테스트 파일:</p>
+<div class="highlight"><pre><span></span><code>Hello, this is a sample text file with a BOM.
+This file can be used to test BOM detection.
+</code></pre></div>
+
+<h3>hex viewer(to check raw bom)</h3>
+<p>헥스 에디터(예: HxD, Hex Fiend)를 사용해 파일의 raw 바이트를 확인합니다. 파일을 열고 처음 몇 바이트를 보면 BOM 시그니처가 보입니다.</p>
+<ul>
+<li>
+<p>UTF-8: BOM 없는경우</p>
+<p><img alt="image.png" src="../images/BOM/image.png"></p>
+</li>
+<li>
+<p>UTF-8: <code>EF BB BF</code></p>
+<p><img alt="image.png" src="../images/BOM/image%201.png"></p>
+</li>
+<li>
+<p>UTF-16 BE: <code>FE FF</code></p>
+<p><img alt="image.png" src="../images/BOM/image%202.png"></p>
+</li>
+<li>
+<p>UTF-16 LE: <code>FF FE</code></p>
+<p><img alt="image.png" src="../images/BOM/image%203.png"></p>
+</li>
+<li>
+<p>UTF-32 BE: <code>00 00 FE FF</code></p>
+<p><img alt="image.png" src="../images/BOM/image%204.png"></p>
+</li>
+<li>
+<p>UTF-32 LE: <code>FF FE 00 00</code></p>
+<p><img alt="image.png" src="../images/BOM/image%205.png"></p>
+</li>
+</ul>
+<p>이 방법은 가장 정확하지만, 수동적입니다.</p>
+<h3>vscode(text editor)</h3>
+<p>VS Code에서 파일을 열고, 오른쪽 아래 상태바에서 인코딩을 확인합니다. "UTF-8 with BOM"으로 표시되면 BOM이 있습니다.</p>
+<p><img alt="image.png" src="../images/BOM/image%206.png"></p>
+<ul>
+<li>
+<p>탐지 및 제거: 명령 팔레트(Ctrl+Shift+P)에서 "Change Encoding"을 검색해 "Reopen with Encoding"으로 BOM을 무시하거나, "Save with Encoding"으로 제거할 수 있습니다.</p>
+<p><img alt="image.png" src="../images/BOM/image%207.png"></p>
+</li>
+<li>
+<p>예시: UTF-16 LE 파일을 열면 자동으로 BOM을 인식하고 올바른 엔디안으로 표시합니다.</p>
+</li>
+</ul>
+<h3>python code detection(custom algorithm)</h3>
+<p>Python에서 직접 BOM을 체크하는 커스텀 코드를 작성할 수 있습니다. 파일을 바이너리 모드로 열고 처음 바이트를 검사합니다.</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">detect_bom</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;rb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>  <span class="c1"># 최대 4바이트 (UTF-32)</span>
+        <span class="k">if</span> <span class="n">raw</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">xEF</span><span class="se">\\</span><span class="s1">xBB</span><span class="se">\\</span><span class="s1">xBF&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;UTF-8&#39;</span>
+        <span class="k">elif</span> <span class="n">raw</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">xFE</span><span class="se">\\</span><span class="s1">xFF&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;UTF-16 BE&#39;</span>
+        <span class="k">elif</span> <span class="n">raw</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">xFF</span><span class="se">\\</span><span class="s1">xFE&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;UTF-16 LE&#39;</span>
+        <span class="k">elif</span> <span class="n">raw</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">x00</span><span class="se">\\</span><span class="s1">x00</span><span class="se">\\</span><span class="s1">xFE</span><span class="se">\\</span><span class="s1">xFF&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;UTF-32 BE&#39;</span>
+        <span class="k">elif</span> <span class="n">raw</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;</span><span class="se">\\</span><span class="s1">xFF</span><span class="se">\\</span><span class="s1">xFE</span><span class="se">\\</span><span class="s1">x00</span><span class="se">\\</span><span class="s1">x00&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;UTF-32 LE&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s1">&#39;No BOM&#39;</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">detect_bom</span><span class="p">(</span><span class="s1">&#39;example.txt&#39;</span><span class="p">))</span>
+</code></pre></div>
+
+<p>이 코드는 BE/LE 모두를 커버하며, 간단한 알고리즘으로 BOM을 탐지합니다.</p>
+<h3>python library(charset-normalizer)</h3>
+<p>charset-normalizer 라이브러리를 사용하면 BOM을 포함한 인코딩을 자동 탐지합니다. pip install charset-normalizer로 설치하세요.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">charset_normalizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">from_path</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">from_path</span><span class="p">(</span><span class="s1">&#39;example.txt&#39;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">best</span><span class="p">()</span><span class="o">.</span><span class="n">encoding</span><span class="p">)</span>  <span class="c1"># 예: &#39;utf-8&#39; (BOM 고려)</span>
+</code></pre></div>
+
+<p>이 라이브러리는 BOM 시그니처를 우선적으로 체크하며, 내용 분석도 병행합니다. UTF-8/16/32 모두 지원합니다.</p>
+<h2>읽는 방법</h2>
+<p>BOM이 있는 파일을 읽을 때, 인코딩을 올바르게 지정해야 합니다.</p>
+<h3>python open with encoding parameter</h3>
+<p>Python의 open() 함수에서 encoding 파라미터를 사용해 BOM을 처리합니다. 'utf-8-sig'처럼 '-sig'를 붙이면 BOM을 자동으로 건너뜁니다.</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># BOM 무시하고 읽기</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;example.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-8-sig&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>  <span class="c1"># BOM 없이 텍스트 출력</span>
+
+<span class="c1"># UTF-16 예시</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;example_utf16.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-16&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># 자동 BOM 처리</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="c1"># UTF-16-LE 예시</span>
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s1">&#39;example_utf16-le.txt&#39;</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;utf-16-le&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>  <span class="c1"># 자동 BOM 처리</span>
+    <span class="n">content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+</code></pre></div>
+
+<p>이 방법으로 UTF-8, UTF-16, UTF-32 파일을 안전하게 읽을 수 있습니다. 엔디안은 BOM으로 자동 결정됩니다.</p>
+<h2>정리하며</h2>
+<p>BOM은 Unicode 파일의 인코딩과 바이트 순서를 명확히 하는 유용한 도구지만, 호환성 문제를 일으킬 수도 있습니다. 그러하여 사용자 업로드 txt, csv, html파일들은 읽기 전 필수로 인코딩을 확인해야 합니다.</p>
+<p>추가로, Unicode Byte Order Mark(BOM) 외에도 다른 인코딩의 텍스트 파일이 존재하며, 이들은 별도의 시그니처나 BOM을 가지지 않는 경우가 많습니다. 예를 들어, 레거시 인코딩인 <strong>ISO-8859-1 (Latin-1)</strong>이나 <strong>Windows-1252</strong>는 BOM 없이 파일 내용으로 인코딩을 추정해야 합니다. 한국어 인코딩의 경우, <strong>EUC-KR (Extended Unix Code for Korean, KS C 5601 기반)</strong>과 <strong>CP949 (IBM-949 또는 MS949, UHC로 알려짐)</strong>는 한국어 텍스트를 위한 일반적인 인코딩으로, BOM이나 고유 시그니처가 없어 프로그램이 파일 내용을 분석하거나 명시적으로 지정해야 합니다. 이러한 인코딩들은 Unicode 이전 시대에 널리 사용되었으나, 오늘날에는 UTF-8로의 전환이 권장됩니다.</p>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://blog.i544c.com/tag/format.html">format</a></li>
+					<li><a href="https://blog.i544c.com/tag/encoding.html">encoding</a></li>
+					<li><a href="https://blog.i544c.com/tag/unicode.html">unicode</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+		<script>
+		(function() {
+			function getCookie(name) {
+			const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+			return match ? match[2] : null;
+			}
+
+			function setCookie(name, value, days) {
+			const expires = new Date(Date.now() + days * 864e5).toUTCString();
+			document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
+			}
+
+			let visitorId = getCookie('visitor_id');
+			if (!visitorId) {
+			visitorId = crypto.randomUUID();
+			setCookie('visitor_id', visitorId, 365);
+			}
+
+			const payload = {
+			path: window.location.pathname,
+			visitor_id: visitorId,
+			date: new Date().toISOString().slice(0, 10)  // "YYYY-MM-DD"
+			};
+
+			fetch("https://api.i544c.com/count", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+			}).catch(err => console.error("Failed to POST visitor", err));
+		})();
+		</script>
+	</body>
+</html>
