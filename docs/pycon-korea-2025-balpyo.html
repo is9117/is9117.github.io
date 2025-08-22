@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="PyCon Korea 2025 발표" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://blog.i544c.com/pycon-korea-2025-balpyo.html" />
+		<meta property="og:image" content="https://blog.i544c.com/images/profile.jpeg" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://blog.i544c.com/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://blog.i544c.com/feeds/python.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://blog.i544c.com/">
+					<img class="profile-picture" src="https://blog.i544c.com/images/profile.jpeg">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="mailto:is9117@me.com">
+						<i class="fa fa-envelope"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://x.com/i544c_park" target="_blank">
+						<i class="fa fa-twitter"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://solved.ac/profile/is9117" target="_blank">
+						<i class="fa fa-trophy"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://blog.i544c.com/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">PyCon Korea 2025 발표</h1>
+	<span class="post-date">Fri 22 August 2025</span>
+	<hr>
+<p><img alt="session_capture" src="../images/pycon_2025/session_web.png"></p>
+<p>좋은 기회가 있어 이번 PyCon Korea 2025에서 발표를 할 수 있게 되었습니다.<br>
+블로그에서 이전에 소개한 브랜치리스 프로그래밍(branchless programming)과 캐시 프리페칭(cache prefetching)에 대해 Python 최적화 응용법을 포함해서 발표하였습니다.<br>
+처음 공개된 세션에서 발표를 하게 되어 많이 긴장했습니다. 너무 발표 노트만 딱딱하게 읽은 것 같아, 조금 더 외우고 했으면 더 좋지 않았을까 싶은 생각이 계속 들더라고요.<br>
+내년에 또 기회가 된다면 더 발전해서 더 좋은 주제로 할 수 있으면 좋겠습니다.<br>
+좋은 기회를 주시고 행사 준비까지 고생 많으셨던 PyCon Korea 준비위원회 분들께 다시 한 번 감사의 말씀을 드립니다.  </p>
+<p>아래 발표 때 썼던 슬라이드와 발표 노트를 같이 공유해드립니다.  </p>
+<iframe src="../files/[PyCon%20Korea%202025]%20Branchless%20Programming%20&%20Cache%20Prefetching%20in%20Python.pdf" width="100%" height="600px"></iframe>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://blog.i544c.com/tag/python.html">python</a></li>
+					<li><a href="https://blog.i544c.com/tag/optimization.html">optimization</a></li>
+					<li><a href="https://blog.i544c.com/tag/cpu-pipeline.html">cpu pipeline</a></li>
+					<li><a href="https://blog.i544c.com/tag/cache.html">cache</a></li>
+					<li><a href="https://blog.i544c.com/tag/jit.html">jit</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+		<script>
+		(function() {
+			function getCookie(name) {
+			const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+			return match ? match[2] : null;
+			}
+
+			function setCookie(name, value, days) {
+			const expires = new Date(Date.now() + days * 864e5).toUTCString();
+			document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
+			}
+
+			let visitorId = getCookie('visitor_id');
+			if (!visitorId) {
+			visitorId = crypto.randomUUID();
+			setCookie('visitor_id', visitorId, 365);
+			}
+
+			const payload = {
+			path: window.location.pathname,
+			visitor_id: visitorId,
+			date: new Date().toISOString().slice(0, 10)  // "YYYY-MM-DD"
+			};
+
+			fetch("https://api.i544c.com/count", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+			}).catch(err => console.error("Failed to POST visitor", err));
+		})();
+		</script>
+	</body>
+</html>

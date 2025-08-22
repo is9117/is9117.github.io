@@ -46,7 +46,8 @@ EXTRA_PATH_METADATA = {
 
 STATIC_PATHS = [
     'images',
-    'extras/CNAME'
+    'extras/CNAME',
+    'files'
 ]
 
 SITEMAP = {
