@@ -1,0 +1,137 @@
+Title: How OS Boots Up - Part 1
+Date: 2025-09-08 11:59
+Modified: 2025-09-08 14:59
+Tags: os, system
+Author: 박이삭
+Category: os
+Summary: OS bootup explained
+
+
+# Introduction
+
+이번 포스트는 운영 체제(OS)의 부팅 과정을 다루는 시리즈를 시작하려고 합니다. Part 1에서는 Windows NT 기반 시스템(예: Windows NT 4.0, 2000, XP, 7)을 x86-32비트 아키텍처에서 BIOS와 MBR(Master Boot Record)을 사용하는 레거시 부팅 과정을 중심으로 설명하겠습니다. 특히 NT bootloader(NTLDR)가 32비트 protected mode로 전환하는 부분까지 다루겠습니다. 이는 UEFI 이전의 전통적인 부팅 메커니즘으로, 하드웨어 초기화부터 커널 로딩 직전까지의 저수준 동작을 이해하는 데 초점을 맞췄습니다.
+
+이 시리즈는 OS의 부팅 과정을 단계별로 분해하여 설명하며, 실무에서 디버깅이나 시스템 최적화에 도움이 될 만한 기술적 세부 사항을 포함합니다. 참고로, 이 설명은 x86-32비트 PC와 MBR 파티셔닝을 가정합니다.
+
+## BIOS ROM과 Power-On 초기화
+
+PC가 켜지면 가장 먼저 실행되는 것은 BIOS(Basic Input/Output System) ROM입니다. BIOS ROM은 마더보드의 비휘발성 메모리(예: EEPROM 또는 플래시 메모리)에 저장된 펌웨어로, CPU가 전원을 공급받자마자 고정 주소(보통 0xFFFF0)에서 코드를 실행합니다. 이 단계는 OS가 로드되기 전의 하드웨어 초기화 과정입니다.
+
+![image.png](../images/os_bootup_p1/image.png)
+
+- **POST(Power-On Self-Test)**: BIOS는 RAM, CPU, 키보드, 디스크 컨트롤러 등의 하드웨어를 테스트합니다. 문제가 발생하면 비프음이나 화면 메시지로 알립니다.
+
+![image.png](../images/os_bootup_p1/image%201.png)
+
+- **하드웨어 초기화**: 비디오 어댑터, 키보드, 디스크 드라이브 등을 기본적으로 설정합니다. BIOS는 내장된 드라이버를 사용해 이 작업을 수행합니다.
+- **부팅 장치 검색**: BIOS 설정에 따라 부팅 순서(예: 하드 디스크, 플로피, CD)를 확인하고, 부팅 가능한 장치를 찾습니다.
+
+BIOS는 16비트 real mode에서 동작합니다. 이는 x86 아키텍처의 레거시 모드로, 메모리 접근이 세그먼트:오프셋 방식으로 제한되어 1MB(2^20 바이트)만 사용할 수 있습니다. 16bit segment register와 16bit offset register로 총 20bit주소를 표현합니다. BIOS ROM의 크기는 보통 64KB~256KB 정도로 작아, 필수 코드와 기본 I/O 서비스만 포함합니다.
+
+![segment + offset address](../images/os_bootup_p1/image%202.png)
+
+segment + offset address
+
+BIOS가 부팅 디스크를 찾으면, 디스크의 첫 번째 섹터(섹터 0, **512바이트**)인 MBR을 메모리 주소 **0x7C00**으로 로드하고 제어를 넘깁니다. 이 과정에서 BIOS는 인터럽트 테이블(IVT, Interrupt Vector Table)을 초기화하여 디스크 읽기(INT 0x13)나 화면 출력(INT 0x10) 같은 기본 서비스를 제공합니다.
+
+![메모리 주소와 데이터](../images/os_bootup_p1/image%203.png)
+
+메모리 주소와 데이터
+
+## Real Mode와 MBR 실행
+
+![image.png](../images/os_bootup_p1/image%204.png)
+
+MBR(Master Boot Record)은 BIOS에 의해 로드된 후 real mode에서 실행됩니다. Real mode는 16비트 레지스터를 사용하며, 메모리 보호가 없어 모든 메모리에 직접 접근할 수 있지만, 이는 시스템 불안정성을 초래할 수 있습니다.
+
+- **MBR 구조**: 512바이트 섹터로, 앞부분은 부트스트랩 코드(보통 446바이트), 뒷부분은 파티션 테이블(4개의 기본 파티션 정의)과 시그니처(0xAA55)로 구성됩니다.
+- **MBR 동작**: MBR 코드는 파티션 테이블을 스캔하여 활성(bootable) 파티션을 찾습니다. 그런 다음, 해당 파티션의 첫 번째 섹터인 PBR(Partition Boot Record, 또는 Volume Boot Sector)을 메모리로 로드합니다.
+- **PBR 역할**: PBR은 파일 시스템(FAT 또는 NTFS) 특정 코드로, 루트 디렉터리에서 Windows NT의 부트로더 파일인 NTLDR(NT Loader)을 로드합니다. NTLDR이 없거나 손상되면 "BOOT: Couldn't find NTLDR" 같은 오류가 발생합니다.
+
+Real mode의 한계(1MB 메모리, 보호 없음)로 인해 부팅 과정은 간단한 I/O 작업에 BIOS 인터럽트를 의존합니다.
+
+## IVT(Interrupt Vector Table)와 인터럽트 호출
+
+![image.png](../images/os_bootup_p1/image%205.png)
+
+IVT(Interrupt Vector Table)는 real mode에서 인터럽트 처리를 위한 핵심 데이터 구조입니다. 메모리 주소 0x0000:0x0000(첫 1KB 영역)에 위치하며, 256개의 엔트리(인터럽트 0x00~0xFF)를 포함합니다. 각 엔트리는 4바이트 포인터(세그먼트:오프셋)로, 인터럽트 서비스 루틴(ISR)의 주소를 가리킵니다. BIOS가 초기화 과정에서 IVT를 채워 기본 서비스(예: INT 0x10 비디오, INT 0x13 디스크 I/O, INT 0x16 키보드)를 제공합니다.
+
+인터럽트 호출은 하드웨어 이벤트(예: 키보드 입력)나 소프트웨어 요청(예: INT 명령어)으로 트리거됩니다. 과정은 다음과 같습니다:
+
+![8086 INT Opcode](../images/os_bootup_p1/image%206.png)
+
+8086 INT Opcode
+
+1. 인터럽트 번호 지정 (하드웨어 IRQ, 소프트웨어 INT, 또는 예외).
+2. CPU가 IVT에서 해당 엔트리의 주소를 조회.
+3. 현재 상태(플래그, CS:IP)를 스택에 저장하고 핸들러로 점프.
+4. 핸들러 실행 후 IRET으로 복귀.
+
+부팅 과정에서 MBR이나 PBR은 IVT를 통해 BIOS 인터럽트를 호출하여 디스크 섹터를 읽습니다. 예: INT 0x13 (AH=0x02로 읽기 모드, DL에 드라이브 번호)로 PBR을 로드합니다. IVT는 real mode의 단순성으로 인해 BIOS에 의존적이며, 속도가 느리고 제한적입니다.
+
+![image.png](../images/os_bootup_p1/image%207.png)
+
+## NTLDR 초기화와 Protected Mode 전환
+
+NTLDR은 PBR에 의해 로드된 후 real mode에서 시작하지만, 곧 32비트 protected mode로 전환합니다. 이는 Windows NT가 32비트 OS로서 더 큰 메모리와 보호 기능을 활용하기 위함입니다.
+
+![Protected Mode Traditional Segmentation Addressing](../images/os_bootup_p1/image%208.png)
+
+Protected Mode Traditional Segmentation Addressing
+
+- **NTLDR 초기 동작**: Real mode에서 미니 파일 시스템 드라이버를 로드하여 부트 파티션(FAT/NTFS)을 읽습니다. 그런 다음, 루트 디렉터리의 BOOT.INI 파일을 파싱합니다. BOOT.INI는 ASCII 텍스트로, ARC(Advanced RISC Computing) 경로(예: multi(0)disk(0)rdisk(0)partition(1)\WINDOWS)를 사용해 OS 위치를 지정합니다. 여러 OS가 있으면 부트 메뉴를 표시합니다.
+- **특수 케이스 처리**: SCSI 드라이브의 경우 NTBOOTDD.SYS(SCSI 드라이버 복사본)를 로드하여 디스크 접근을 지원합니다.
+- **Protected Mode 전환**: NTLDR은 real mode에서 protected mode로 스위치합니다. 이 과정은 다음과 같습니다:
+    - **GDT(Global Descriptor Table) 설정**: 코드, 데이터, 스택 세그먼트를 정의합니다.
+    - **A20 라인 활성화**: 1MB 이상 메모리 접근을 위한 레거시 핀.
+    - **CR0 레지스터 설정**: PE(Protected Enable) 비트를 1로 설정하여 protected mode 활성화.
+    - 전환 후, 32비트 플랫 메모리 모델로 4GB(2^32 바이트) 접근 가능. 현대 OS는 이 과정에서 **flat segmentation**을 사용하여 메모리 관리를 단순화하고 효율성을 높입니다. 메모리 보호와 특권 레벨(링 0~3)이 적용되어 안정성 향상.
+
+이 단계에서 NTLDR은 하드웨어 감지 프로그램([NTDETECT.COM](http://ntdetect.com/))을 실행하여 레지스트리 키(HKEY_LOCAL_MACHINE\HARDWARE)를 구축합니다. 이후 커널(NTOSKRNL.EXE)과 HAL.DLL을 로드할 준비를 마칩니다.
+
+## IDT(Interrupt Descriptor Table)와 인터럽트 처리
+
+IDT(Interrupt Descriptor Table)는 protected mode에서 인터럽트와 예외를 처리하는 테이블입니다. IVT와 달리 더 복잡하며, NTLDR이나 커널이 설정합니다. 각 엔트리는 세그먼트 셀렉터, 오프셋, 속성(예: 특권 레벨)을 포함하여 32비트 주소와 보호 기능을 지원합니다.
+
+![image.png](../images/os_bootup_p1/image%209.png)
+
+Protected mode의 인터럽트 호출 과정:
+
+1. 인터럽트 발생 (하드웨어, 소프트웨어 시스템 콜, 또는 예외).
+2. CPU가 IDT에서 엔트리 조회하고 특권 레벨 확인.
+3. 프로세서 상태(EFLAGS, CS:EIP)를 저장하고 핸들러의 코드 세그먼트로 전환.
+4. 핸들러 실행 후 IRETD(32비트 리턴)으로 복귀.
+
+IDT는 부팅 후 BIOS 인터럽트를 대체하여 네이티브 드라이버로 전환합니다. 예를 들어, NTLDR이 protected mode로 스위치한 후 임시 IDT를 설정하여 하드웨어 이벤트나 시스템 콜을 처리합니다. 이는 Windows NT의 안정성과 성능을 높입니다.
+
+![INT 2e로 kernal API호출 방법](../images/os_bootup_p1/image%2010.png)
+
+INT 2e로 kernal API호출 방법
+
+## Key Files and Concepts Summary
+
+아래 테이블은 이 과정에서 핵심 파일과 개념을 요약합니다:
+
+| 항목 | 설명 |
+| --- | --- |
+| BIOS ROM | 초기 코드와 IVT 제공, POST와 부팅 장치 로드. |
+| MBR | 파티션 테이블 스캔, PBR 로드. |
+| PBR | NTLDR 로드, 파일 시스템 특정. |
+| NTLDR | BOOT.INI 파싱, protected mode 전환, [NTDETECT.COM](http://ntdetect.com/) 실행. |
+| Real Mode | 16비트, 1MB 메모리, IVT 기반 인터럽트. |
+| Protected Mode | 32비트, 4GB 메모리, IDT와 메모리 보호. |
+| IVT | Real mode 인터럽트 테이블, BIOS 서비스 제공. |
+| IDT | Protected mode 인터럽트 테이블, 보호된 처리. |
+
+## Considerations
+
+16비트 real mode, BIOS, IVT, IDT 등 저수준 OS 동작 원리를 왜 배워야 할까 의문을 가질 수 있습니다. 하지만 이러한 지식을 쌓으면 다음과 같은 실무적 이점이 있습니다:
+
+- **시스템 크래시나 부팅 실패 시 원인 분석과 디버깅**: 오류의 근본 원인을 빠르게 파악하고 해결할 수 있습니다.
+- **보안 취약점 이해와 방어**: BIOS 기반 공격(예: 루트킷) 등을 인지하고 대응 전략을 세울 수 있습니다.
+- **저수준 최적화와 커스텀 부트로더 개발**: 성능 튜닝이나 맞춤형 부팅 시스템을 구현할 때 활용됩니다.
+- **부팅/OS 원리 이해를 통한 가상 환경 최적화**: VM(가상 머신) 설정에서 메모리 관리나 하이퍼바이저 최적화를 효과적으로 할 수 있습니다.
+- **메모리 가상화 이해(Protected Mode)**: Protected mode의 세그먼테이션과 페이징을 깊이 알면, 현대 메모리 관리 기술(예: 가상 메모리)을 더 잘 파악할 수 있습니다.
+- **기술 발전 추적과 미래 방향성 예측**: 과거 기술(BIOS/MBR)부터 UEFI/GPT까지의 진화를 공부하며, OS와 하드웨어의 미래 트렌드를 예상할 수 있습니다.
+
+위와 같은 응용 지식으로 개발자나 인프라 운영자에게 시스템 이해도를 높여주며, 더 견고하고 효율적인 솔루션을 설계하는 데 큰 도움이 됩니다.
