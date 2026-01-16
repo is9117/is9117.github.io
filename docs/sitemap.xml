@@ -6,42 +6,42 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/archives.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/author/bagisag.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/author/bagisag2.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/author/isaac-park.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/authors.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -76,77 +76,84 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/categories.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/ai.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/api.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/backend.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/data.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/database.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/category/devops.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/gisulseutaeg.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/infra.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/os.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/performance.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/category/python.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -195,7 +202,7 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/index2.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
@@ -258,247 +265,296 @@ xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 <url>
 <loc>https://blog.i544c.com/robots.txt</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/algorithm.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/api.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/aws.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/backend.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/backend2.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/cache.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/ci.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/cpu-pipeline.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/data-structure.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/database.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/deploy.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/django.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/dns.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/document.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/encoding.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/format.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/git.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/infra.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/jit.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/k8s.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/kubernetes.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/llm.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/log.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/migration.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/mysql.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/operation.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/optimization.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/os.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/performance.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/profiling.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/pytest-django.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/pytest.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/python.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/remote-access.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/system.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/tunnel.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/unicode.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tag/unittest.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/tag/vpn.html</loc>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
 </url>
 
 <url>
 <loc>https://blog.i544c.com/tags.html</loc>
-<lastmod>2025-09-08T16:06:13-00:00</lastmod>
+<lastmod>2026-01-16T10:03:01-00:00</lastmod>
 <changefreq>daily</changefreq>
 <priority>0.5</priority>
+</url>
+
+<url>
+<loc>https://blog.i544c.com/telepresence-oss-rokeol-gaebalhwangyeong-kubernetes-cluster-networke-butineun-bangbeob.html</loc>
+<lastmod>2026-01-15T19:01:00+09:00</lastmod>
+<changefreq>daily</changefreq>
+<priority>0.6</priority>
 </url>
 
 <url>
