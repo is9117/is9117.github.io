@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog - devops</title><link href="https://blog.i544c.com/" rel="alternate"></link><link href="https://blog.i544c.com/feeds/devops.atom.xml" rel="self"></link><id>https://blog.i544c.com/</id><updated>2026-01-15T19:01:00+09:00</updated><entry><title>Telepresence OSS: 로컬 개발환경 Kubernetes Cluster Network에 “붙이는” 방법</title><link href="https://blog.i544c.com/telepresence-oss-rokeol-gaebalhwangyeong-kubernetes-cluster-networke-butineun-bangbeob.html" rel="alternate"></link><published>2026-01-15T19:01:00+09:00</published><updated>2026-01-15T19:01:00+09:00</updated><author><name>박이삭</name></author><id>tag:blog.i544c.com,2026-01-15:/telepresence-oss-rokeol-gaebalhwangyeong-kubernetes-cluster-networke-butineun-bangbeob.html</id><summary type="html">&lt;p&gt;로컬개발환경 k8s클러스터 연결하는 툴 Telepresence&lt;/p&gt;</summary><content type="html">&lt;hr&gt;
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog - devops</title><link href="https://blog.i544c.com/" rel="alternate"></link><link href="https://blog.i544c.com/feeds/devops.atom.xml" rel="self"></link><id>https://blog.i544c.com/</id><updated>2026-01-19T11:25:00+09:00</updated><entry><title>Telepresence OSS: 로컬 개발환경 Kubernetes Cluster Network에 “붙이는” 방법</title><link href="https://blog.i544c.com/telepresence-oss-rokeol-gaebalhwangyeong-kubernetes-cluster-networke-butineun-bangbeob.html" rel="alternate"></link><published>2026-01-15T19:01:00+09:00</published><updated>2026-01-19T11:25:00+09:00</updated><author><name>박이삭</name></author><id>tag:blog.i544c.com,2026-01-15:/telepresence-oss-rokeol-gaebalhwangyeong-kubernetes-cluster-networke-butineun-bangbeob.html</id><summary type="html">&lt;p&gt;로컬개발환경 k8s클러스터 연결하는 툴 Telepresence&lt;/p&gt;</summary><content type="html">&lt;hr&gt;
 &lt;h2&gt;전제 조건과 환경 가정&lt;/h2&gt;
 &lt;p&gt;이 글은 &lt;strong&gt;Telepresence OSS&lt;/strong&gt; 기준으로 작성합니다. 개발 머신(macOS)은 &lt;strong&gt;VPN&lt;/strong&gt;을 통해 IDC 내부망에 접근 가능하고, 그 결과로 Kubernetes &lt;strong&gt;API server endpoint&lt;/strong&gt;(kubeconfig context)에 접근 가능하다고 가정합니다. Telepresence는 “node에 직접 SSH”하는 모델이 아니라, 기본적으로 &lt;strong&gt;Kubernetes API (port-forward)&lt;/strong&gt; 기반으로 클러스터와 데이터를 터널링하는 구성이라서, 네트워크 관점에서 “API 접근 가능성”이 가장 중요합니다. (&lt;a href="https://telepresence.io/docs/reference/cluster-config"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
 &lt;hr&gt;
@@ -23,7 +23,7 @@
 &lt;h3&gt;ClusterIP / Pod IP access from local host&lt;/h3&gt;
 &lt;p&gt;Telepresence는 connect 시 &lt;strong&gt;VIF(virtual network interface)&lt;/strong&gt;를 만들고, cluster의 &lt;strong&gt;service subnet / pod subnet&lt;/strong&gt;으로 라우팅을 구성해서 로컬에서 ClusterIP/Pod IP 대역으로 통신이 가능해집니다. (&lt;a href="https://telepresence.io/docs/reference/vpn"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
 &lt;h3&gt;Remote pod traffic intercept → reroute to local machine&lt;/h3&gt;
-&lt;p&gt;Telepresence의 핵심 기능 중 하나는 &lt;strong&gt;intercept&lt;/strong&gt;로, 특정 workload(뒤에 service가 매핑된 경우가 일반적)의 트래픽을 로컬로 돌려서 “클러스터에서 들어오는 요청이 로컬 프로세스로 들어오게” 만듭니다. 이때 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, &lt;strong&gt;Ingress로 들어오는 트래픽도 포함될 수 있고&lt;/strong&gt;, production에서는 금지 또는 강한 격리 정책이 권장됩니다. (&lt;a href="https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
+&lt;p&gt;Telepresence의 핵심 기능 중 하나는 &lt;strong&gt;intercept&lt;/strong&gt;로, 특정 workload(deploy, replicaset, deamonset 등)의 트래픽을 로컬로 돌려서 “클러스터에서 들어오는 요청이 로컬 프로세스로 들어오게” 만듭니다. 이때 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, &lt;strong&gt;Ingress로 들어오는 트래픽도 포함될 수 있고&lt;/strong&gt;, production에서는 금지 또는 강한 격리 정책이 권장됩니다. (&lt;a href="https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
 &lt;hr&gt;
 &lt;h2&gt;3) Architecture&lt;/h2&gt;
 &lt;p&gt;Telepresence는 크게 &lt;strong&gt;local side(daemon)&lt;/strong&gt;과 &lt;strong&gt;cluster side(Traffic Manager / Traffic Agent)&lt;/strong&gt;로 나뉩니다. cluster side의 Traffic Manager는 클러스터 내부에서 세션/라우팅/DNS/에이전트 관리를 담당하고, 필요 시 Traffic Agent가 대상 workload 쪽으로 붙어서 intercept 경로의 데이터 플레인을 구성합니다. gRPC 기반 터널을 통해 “클러스터 ↔ 로컬” 트래픽이 오갑니다. (&lt;a href="https://telepresence.io/docs/reference/cluster-config"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
@@ -59,10 +59,12 @@ telepresence&lt;span class="w"&gt; &lt;/span&gt;connect&lt;span class="w"&gt; &l
 Connected to context default, namespace default (https://&amp;lt;cluster-public-IP&amp;gt;)
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
-&lt;p&gt;연결 후에는 &lt;code&gt;curl web-app:80&lt;/code&gt; 같은 “cluster service-name 기반 접근”이 로컬에서 가능해집니다. (&lt;a href="https://telepresence.io/docs/reference/dns"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
+&lt;p&gt;연결 후에는 &lt;code&gt;curl web-app:80&lt;/code&gt; 같은 “cluster workflow-name 기반 접근”이 로컬에서 가능해집니다. workflow는 deploy, replicaset, deamonset같은 pod그룹을 말합니다. (&lt;a href="https://telepresence.io/docs/reference/dns"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
 &lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;curl&lt;span class="w"&gt; &lt;/span&gt;web-app:80
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
+&lt;p&gt;&lt;strong&gt;Note: Connect 동시접속 가능&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Connect는 기본적으로 &lt;strong&gt;kube-apiserver의 port-forward 채널 위에서 gRPC 터널&lt;/strong&gt;을 열어 traffic-manager에 붙는 형태입니다. kube-apiserver는 본질적으로 다수의 클라이언트 연결(여러 개발자/CI 등)을 동시에 처리하는 컴포넌트이기 때문에, 여러 명이 동시에 &lt;code&gt;telepresence connect&lt;/code&gt;를 수행해도 ‘접속 자체’는 구조적으로 가능합니다. 즉 traffic-manager가 여러 클라이언트 세션/터널을 동시에 유지하는 것 자체는 문제가 되는 방향이 아닙니다.&lt;/p&gt;
 &lt;hr&gt;
 &lt;h3&gt;4.3 Intercept (remote pod 트래픽을 로컬로)&lt;/h3&gt;
 &lt;p&gt;Intercept는 “클러스터로 들어오는 요청을 로컬 프로세스로 전환”하는 기능입니다. &lt;code&gt;--port 8080:80&lt;/code&gt;처럼 local:remote 포트를 매핑해서, 클러스터가 원래 보내던 트래픽을 로컬의 &lt;code&gt;:8080&lt;/code&gt;으로 받게 구성합니다. (&lt;a href="https://telepresence.io/docs/reference/cluster-config"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
@@ -75,6 +77,8 @@ telepresence&lt;span class="w"&gt; &lt;/span&gt;intercept&lt;span class="w"&gt; 
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 
 &lt;p&gt;주의: Intercept는 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, Ingress를 통해 들어오는 트래픽도 포함될 수 있습니다. production에서는 금지 또는 강한 격리가 권장됩니다. (&lt;a href="https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com"&gt;telepresence.io&lt;/a&gt;)&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note: Intercept는 ‘동시에 여러 명이 하나의 대상’을 공유하기 어렵다&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Intercept는 단순히 터널을 하나 더 여는 게 아니라, &lt;strong&gt;특정 workload의 트래픽 경로(데이터 플레인)를 로컬로 ‘전환’&lt;/strong&gt;시키는 동작입니다. 이 전환된 트래픽을 traffic-agent가 ‘동시에 여러 개발자에게’ 복제해서 보내야 한다는 의미가 되는데, 이는 일반적인 프록시/디버깅 도구 관점에서도 자연스러운 동작이 아니고(요청/응답의 소유권이 모호해짐), Telepresence OSS 기준으로는 &lt;strong&gt;한 번에 하나의 연결(한 명의 개발자 세션)만 활성화되는 형태로 동작하는 것으로 확인&lt;/strong&gt;됩니다. 따라서 팀 단위로는 보통 &lt;strong&gt;Connect는 공유 가능 / Intercept는 충돌 가능&lt;/strong&gt;(선점/경합)으로 운영 정책을 잡는 편이 안전합니다.&lt;/p&gt;
 &lt;hr&gt;
 &lt;h2&gt;5) 어떻게 하는지? (Under the hood)&lt;/h2&gt;
 &lt;h3&gt;5.1 Client daemon: VIF(TUN) 데이터 플레인&lt;/h3&gt;

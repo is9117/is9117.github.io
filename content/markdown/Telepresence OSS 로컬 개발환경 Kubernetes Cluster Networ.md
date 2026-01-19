@@ -1,5 +1,6 @@
 Title: Telepresence OSS: 로컬 개발환경 Kubernetes Cluster Network에 “붙이는” 방법
 Date: 2026-01-15 19:01
+Modified: 2026-01-19 11:25
 Tags: kubernetes, k8s, dns, tunnel, remote access, vpn
 Author: 박이삭
 Category: devops
@@ -46,7 +47,7 @@ Telepresence는 connect 시 **VIF(virtual network interface)**를 만들고, clu
 
 ### Remote pod traffic intercept → reroute to local machine
 
-Telepresence의 핵심 기능 중 하나는 **intercept**로, 특정 workload(뒤에 service가 매핑된 경우가 일반적)의 트래픽을 로컬로 돌려서 “클러스터에서 들어오는 요청이 로컬 프로세스로 들어오게” 만듭니다. 이때 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, **Ingress로 들어오는 트래픽도 포함될 수 있고**, production에서는 금지 또는 강한 격리 정책이 권장됩니다. ([telepresence.io](https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com))
+Telepresence의 핵심 기능 중 하나는 **intercept**로, 특정 workload(deploy, replicaset, deamonset 등)의 트래픽을 로컬로 돌려서 “클러스터에서 들어오는 요청이 로컬 프로세스로 들어오게” 만듭니다. 이때 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, **Ingress로 들어오는 트래픽도 포함될 수 있고**, production에서는 금지 또는 강한 격리 정책이 권장됩니다. ([telepresence.io](https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com))
 
 ---
 
@@ -104,12 +105,16 @@ Connected to context default, namespace default (https://<cluster-public-IP>)
 
 ```
 
-연결 후에는 `curl web-app:80` 같은 “cluster service-name 기반 접근”이 로컬에서 가능해집니다. ([telepresence.io](https://telepresence.io/docs/reference/dns))
+연결 후에는 `curl web-app:80` 같은 “cluster workflow-name 기반 접근”이 로컬에서 가능해집니다. workflow는 deploy, replicaset, deamonset같은 pod그룹을 말합니다. ([telepresence.io](https://telepresence.io/docs/reference/dns))
 
 ```bash
 curl web-app:80
 
 ```
+
+**Note: Connect 동시접속 가능**
+
+Connect는 기본적으로 **kube-apiserver의 port-forward 채널 위에서 gRPC 터널**을 열어 traffic-manager에 붙는 형태입니다. kube-apiserver는 본질적으로 다수의 클라이언트 연결(여러 개발자/CI 등)을 동시에 처리하는 컴포넌트이기 때문에, 여러 명이 동시에 `telepresence connect`를 수행해도 ‘접속 자체’는 구조적으로 가능합니다. 즉 traffic-manager가 여러 클라이언트 세션/터널을 동시에 유지하는 것 자체는 문제가 되는 방향이 아닙니다.
 
 ---
 
@@ -130,6 +135,10 @@ telepresence intercept web-app --port 8080:80
 ```
 
 주의: Intercept는 “해당 서비스로 바인딩되는 트래픽 전체”가 대상이므로, Ingress를 통해 들어오는 트래픽도 포함될 수 있습니다. production에서는 금지 또는 강한 격리가 권장됩니다. ([telepresence.io](https://telepresence.io/docs/2.19/reference/intercepts/cli?utm_source=chatgpt.com))
+
+**Note: Intercept는 ‘동시에 여러 명이 하나의 대상’을 공유하기 어렵다**
+
+Intercept는 단순히 터널을 하나 더 여는 게 아니라, **특정 workload의 트래픽 경로(데이터 플레인)를 로컬로 ‘전환’**시키는 동작입니다. 이 전환된 트래픽을 traffic-agent가 ‘동시에 여러 개발자에게’ 복제해서 보내야 한다는 의미가 되는데, 이는 일반적인 프록시/디버깅 도구 관점에서도 자연스러운 동작이 아니고(요청/응답의 소유권이 모호해짐), Telepresence OSS 기준으로는 **한 번에 하나의 연결(한 명의 개발자 세션)만 활성화되는 형태로 동작하는 것으로 확인**됩니다. 따라서 팀 단위로는 보통 **Connect는 공유 가능 / Intercept는 충돌 가능**(선점/경합)으로 운영 정책을 잡는 편이 안전합니다.
 
 ---
 
