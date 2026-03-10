@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>Isaac's Tech Blog - agent</title><link href="https://blog.i544c.com/" rel="alternate"></link><link href="https://blog.i544c.com/feeds/agent.atom.xml" rel="self"></link><id>https://blog.i544c.com/</id><updated>2026-03-10T11:39:00+09:00</updated><entry><title>맥북 화면 잠금 + 원격 제어: Claude Code 무인 실행 가이드</title><link href="https://blog.i544c.com/maegbug-hwamyeon-jamgeum-weongyeog-jeeo-claude-code-muin-silhaeng-gaideu.html" rel="alternate"></link><published>2026-03-09T19:00:00+09:00</published><updated>2026-03-10T11:39:00+09:00</updated><author><name>Isaac Park</name></author><id>tag:blog.i544c.com,2026-03-09:/maegbug-hwamyeon-jamgeum-weongyeog-jeeo-claude-code-muin-silhaeng-gaideu.html</id><summary type="html">&lt;p&gt;MacBook을 잠금 상태로 두면서 Claude Code를 계속 실행하고, 스마트폰으로 원격 제어하는 방법을 caffeinate와 Remote Control로 구성하는 가이드.&lt;/p&gt;</summary><content type="html">&lt;hr&gt;
+&lt;p&gt;MacBook을 잠금 상태로 두고 자리를 비울 때, Claude Code가 계속 작동하게 하고 싶었습니다. 보안을 위해 화면은 잠가야 하지만, 동시에 Claude Code는 계속 실행되어야 하고, 스마트폰으로 진행 상황을 모니터링하거나 방향을 지시하고 싶었습니다.&lt;/p&gt;
+&lt;p&gt;이 글은 그 문제를 해결한 과정을 정리합니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;0. 문제 정의&lt;/h2&gt;
+&lt;p&gt;상황은 이렇습니다.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;MacBook의 화면을 잠그면 시스템이 유휴 상태로 판단하고 슬립에 진입합니다&lt;/li&gt;
+&lt;li&gt;Claude Code는 슬립 진입 시 실행이 멈춥니다&lt;/li&gt;
+&lt;li&gt;자리를 비운 사이 Claude가 아무것도 하지 않았다는 걸 돌아와서 확인하는 상황이 반복됩니다&lt;/li&gt;
+&lt;li&gt;화면 잠금 해제 없이 스마트폰으로 Claude에게 지시를 내리거나 권한을 승인하고 싶습니다&lt;/li&gt;
+&lt;li&gt;동시에 여러 Claude Code 세션이 실행될 수 도 있습니다.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;해결 방향은 세 가지입니다.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;code&gt;caffeinate&lt;/code&gt;로 MacBook 슬립을 방지한다&lt;/li&gt;
+&lt;li&gt;래퍼 스크립트와 &lt;code&gt;SessionStart&lt;/code&gt; 훅으로 caffeinate 생명주기를 관리한다&lt;/li&gt;
+&lt;li&gt;Claude Code Remote Control로 스마트폰에서 세션에 접속한다&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2&gt;1. MacBook 슬립 방지: caffeinate&lt;/h2&gt;
+&lt;h3&gt;1.1 caffeinate란?&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;caffeinate&lt;/code&gt;는 macOS에 기본 내장된 커맨드라인 도구입니다. 이름 그대로 "카페인을 주입해 잠들지 못하게 한다"는 의미입니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;man&lt;span class="w"&gt; &lt;/span&gt;caffeinate
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;img alt="image_01.png" src="../images/claude_code_rc/image_01.png"&gt;&lt;/p&gt;
+&lt;p&gt;주요 플래그는 아래와 같습니다.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;-i&lt;/code&gt;: 유휴 슬립(idle sleep) 방지. 시스템이 사용되지 않는다고 판단해도 슬립하지 않습니다&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-d&lt;/code&gt;: 디스플레이 슬립 방지&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-s&lt;/code&gt;: 시스템 슬립 방지 (전원 연결 상태에서만 유효)&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;-t &amp;lt;초&amp;gt;&lt;/code&gt;: 지정 시간 후 자동 종료&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;화면은 잠기되 프로세스는 계속 실행되어야 하는 우리 목적에는 &lt;code&gt;-i&lt;/code&gt; 플래그가 적합합니다. 화면을 잠그는 것(lock screen)과 시스템이 슬립에 진입하는 것은 다른 개념입니다. &lt;code&gt;-i&lt;/code&gt;는 전자는 허용하면서 후자만 막습니다.&lt;/p&gt;
+&lt;h3&gt;1.2 단순 사용법&lt;/h3&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="c1"&gt;# 슬립 방지 시작 (Ctrl+C로 종료)&lt;/span&gt;
+caffeinate&lt;span class="w"&gt; &lt;/span&gt;-i
+
+&lt;span class="c1"&gt;# 백그라운드 실행&lt;/span&gt;
+caffeinate&lt;span class="w"&gt; &lt;/span&gt;-i&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;
+
+&lt;span class="c1"&gt;# PID 확인&lt;/span&gt;
+&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$!&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;문제는 Claude Code를 시작하고 종료할 때마다 수동으로 caffeinate를 관리해야 한다는 점입니다. 자동화가 필요합니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;2. 자동화: 래퍼 스크립트와 SessionStart 훅&lt;/h2&gt;
+&lt;p&gt;caffeinate를 자동으로 시작하고 종료하기 위해 두 가지 레이어를 사용합니다.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;래퍼 스크립트&lt;/strong&gt;: Claude Code 실행 전후의 생명주기를 담당합니다&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;SessionStart 훅&lt;/strong&gt;: 세션 재개, &lt;code&gt;/clear&lt;/code&gt;, 컴팩션 후 caffeinate가 죽어있을 경우를 대비한 안전망입니다&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;두 레이어 모두 PID 파일(&lt;code&gt;/tmp/claude_caffeinate.pid&lt;/code&gt;)을 통해 중복 실행을 방지합니다.&lt;/p&gt;
+&lt;h3&gt;2.1 SessionStart 훅 스크립트&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;~/.claude/hooks/caffeinate-start.sh&lt;/code&gt;를 생성합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="ch"&gt;#!/bin/bash&lt;/span&gt;
+
+&lt;span class="c1"&gt;# PID 파일이 존재하고, 해당 프로세스가 실제로 caffeinate인지 확인&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nv"&gt;existing_pid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;$(&lt;/span&gt;cat&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="k"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ps&lt;span class="w"&gt; &lt;/span&gt;-p&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="nv"&gt;$existing_pid&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-o&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&amp;gt;/dev/null&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;|&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-q&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;caffeinate&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;☕ caffeinate already running (PID &lt;/span&gt;&lt;span class="nv"&gt;$existing_pid&lt;/span&gt;&lt;span class="s2"&gt;), skipping&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;exit&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;fi&lt;/span&gt;
+&lt;span class="k"&gt;fi&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 새로 caffeinate 시작&lt;/span&gt;
+nohup&lt;span class="w"&gt; &lt;/span&gt;caffeinate&lt;span class="w"&gt; &lt;/span&gt;-i&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;/dev/null&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&amp;gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;
+&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$!&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid
+&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;☕ caffeinate started (PID &lt;/span&gt;&lt;span class="nv"&gt;$!&lt;/span&gt;&lt;span class="s2"&gt;)&amp;quot;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;실행 권한을 부여합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;chmod&lt;span class="w"&gt; &lt;/span&gt;+x&lt;span class="w"&gt; &lt;/span&gt;~/.claude/hooks/caffeinate-start.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;h3&gt;2.2 훅 등록&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;~/.claude/settings.json&lt;/code&gt;에 훅을 등록합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="p"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nt"&gt;&amp;quot;hooks&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nt"&gt;&amp;quot;SessionStart&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;
+&lt;span class="w"&gt;      &lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;&lt;span class="nt"&gt;&amp;quot;hooks&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;
+&lt;span class="w"&gt;          &lt;/span&gt;&lt;span class="p"&gt;{&lt;/span&gt;
+&lt;span class="w"&gt;            &lt;/span&gt;&lt;span class="nt"&gt;&amp;quot;type&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;command&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;
+&lt;span class="w"&gt;            &lt;/span&gt;&lt;span class="nt"&gt;&amp;quot;command&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;~/.claude/hooks/caffeinate-start.sh&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;          &lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;      &lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code&gt;SessionStart&lt;/code&gt;는 &lt;code&gt;startup&lt;/code&gt;, &lt;code&gt;resume&lt;/code&gt;, &lt;code&gt;/clear&lt;/code&gt;, &lt;code&gt;compact&lt;/code&gt; 이후 모두 발생합니다. 따라서 어떤 상황에서든 caffeinate가 살아있지 않으면 새로 시작합니다.&lt;/p&gt;
+&lt;h3&gt;2.3 래퍼 스크립트&lt;/h3&gt;
+&lt;p&gt;&lt;code&gt;~/claude-launch.sh&lt;/code&gt;를 생성합니다.&lt;/p&gt;
+&lt;p&gt;래퍼 스크립트가 처리하는 시나리오는 다음과 같습니다.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;실행 전:&lt;/strong&gt;
+PID 파일이 없거나 프로세스가 죽어있으면 caffeinate를 새로 시작합니다. 이미 실행 중이라면 건너뜁니다 (다른 Claude Code 세션이 이미 caffeinate를 관리 중인 경우).&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;종료 후:&lt;/strong&gt;
+다른 Claude Code 세션이 아직 실행 중이라면 caffeinate를 그대로 둡니다. 마지막 세션이 종료된 경우에만 PID 파일을 읽어 caffeinate를 종료하고 파일을 삭제합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="ch"&gt;#!/bin/bash&lt;/span&gt;
+
+&lt;span class="c1"&gt;# ── 실행 전: caffeinate 상태 확인 및 시작 ──────────────────────────────&lt;/span&gt;
+
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nv"&gt;existing_pid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;$(&lt;/span&gt;cat&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="k"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ps&lt;span class="w"&gt; &lt;/span&gt;-p&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="nv"&gt;$existing_pid&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-o&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;args&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&amp;gt;/dev/null&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;|&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-q&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;caffeinate&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;☕ caffeinate already running (PID &lt;/span&gt;&lt;span class="nv"&gt;$existing_pid&lt;/span&gt;&lt;span class="s2"&gt;), skipping&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nv"&gt;CAFF_OWNED&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;false&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;else&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="c1"&gt;# PID 파일은 있으나 프로세스가 없는 경우 (stale)&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;caffeinate&lt;span class="w"&gt; &lt;/span&gt;-i&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nv"&gt;CAFF_PID&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;$!&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$CAFF_PID&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;☕ caffeinate started (PID &lt;/span&gt;&lt;span class="nv"&gt;$CAFF_PID&lt;/span&gt;&lt;span class="s2"&gt;)&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="nv"&gt;CAFF_OWNED&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;true&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;fi&lt;/span&gt;
+&lt;span class="k"&gt;else&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="c1"&gt;# PID 파일 없음&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;caffeinate&lt;span class="w"&gt; &lt;/span&gt;-i&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nv"&gt;CAFF_PID&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;$!&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$CAFF_PID&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;☕ caffeinate started (PID &lt;/span&gt;&lt;span class="nv"&gt;$CAFF_PID&lt;/span&gt;&lt;span class="s2"&gt;)&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nv"&gt;CAFF_OWNED&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nb"&gt;true&lt;/span&gt;
+&lt;span class="k"&gt;fi&lt;/span&gt;
+
+&lt;span class="c1"&gt;# ── Claude Code 실행 (blocking) ─────────────────────────────────────────&lt;/span&gt;
+
+claude&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="nv"&gt;$@&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;
+
+&lt;span class="c1"&gt;# ── 종료 후: 다른 claude 세션 확인 후 caffeinate 종료 ──────────────────&lt;/span&gt;
+
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pgrep&lt;span class="w"&gt; &lt;/span&gt;-x&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;claude&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&amp;gt;&lt;span class="w"&gt; &lt;/span&gt;/dev/null&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&amp;gt;&lt;span class="p"&gt;&amp;amp;&lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;⚠️  other claude sessions still running, leaving caffeinate alive&amp;quot;&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;exit&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;
+&lt;span class="k"&gt;fi&lt;/span&gt;
+
+&lt;span class="c1"&gt;# 마지막 세션 종료 — PID 파일을 다시 읽어서 종료&lt;/span&gt;
+&lt;span class="c1"&gt;# (다른 세션이 PID 파일을 덮어썼을 가능성에 대비)&lt;/span&gt;
+&lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;&lt;span class="p"&gt;;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;then&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nv"&gt;saved_pid&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="k"&gt;$(&lt;/span&gt;cat&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid&lt;span class="k"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;kill&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="nv"&gt;$saved_pid&lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;&amp;gt;/dev/null
+&lt;span class="w"&gt;  &lt;/span&gt;rm&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;/tmp/claude_caffeinate.pid
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;✅ caffeinate stopped (PID &lt;/span&gt;&lt;span class="nv"&gt;$saved_pid&lt;/span&gt;&lt;span class="s2"&gt;)&amp;quot;&lt;/span&gt;
+&lt;span class="k"&gt;fi&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;실행 권한을 부여하고 alias를 설정합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;chmod&lt;span class="w"&gt; &lt;/span&gt;+x&lt;span class="w"&gt; &lt;/span&gt;~/claude-launch.sh
+
+&lt;span class="c1"&gt;# ~/.zshrc에 추가&lt;/span&gt;
+&lt;span class="nb"&gt;alias&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;claude&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;~/claude-launch.sh&amp;#39;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;이후 &lt;code&gt;source ~/.zshrc&lt;/code&gt;를 실행하면 &lt;code&gt;claude&lt;/code&gt; 명령어가 래퍼 스크립트를 통해 실행됩니다.&lt;/p&gt;
+&lt;h3&gt;2.4 동작 확인&lt;/h3&gt;
+&lt;p&gt;두 세션을 동시에 실행했을 때 caffeinate가 하나만 뜨는지 확인합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;ps&lt;span class="w"&gt; &lt;/span&gt;-ef&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;|&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;caffe
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="mf"&gt;501&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;41296&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;41291&lt;/span&gt;&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="mf"&gt;0&lt;/span&gt;&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="mf"&gt;4&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mf"&gt;30&lt;/span&gt;&lt;span class="n"&gt;PM&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;ttys003&lt;/span&gt;&lt;span class="w"&gt;    &lt;/span&gt;&lt;span class="mf"&gt;0&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="mf"&gt;00.00&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code&gt;caffeinate -i&lt;/code&gt; 프로세스가 하나만 있다면 정상입니다.&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;3. 원격 제어: Claude Code Remote Control&lt;/h2&gt;
+&lt;h3&gt;3.1 Remote Control이란?&lt;/h3&gt;
+&lt;p&gt;2026년 2월, Anthropic이 Claude Code에 Remote Control 기능을 출시했습니다. 로컬에서 실행 중인 Claude Code 세션을 스마트폰, 태블릿, 또는 다른 브라우저에서 계속 이어받을 수 있는 기능입니다.&lt;/p&gt;
+&lt;p&gt;동작 방식은 "세션의 클라우드 마이그레이션"이 아닙니다. 세션은 계속 로컬 머신에서 실행되고, 웹/모바일 인터페이스는 그 세션의 창(window)으로 작동합니다. 파일시스템, MCP 서버, 커스텀 도구 등 로컬 환경이 그대로 유지됩니다.&lt;/p&gt;
+&lt;p&gt;보안 모델도 명확합니다. 인바운드 포트는 열리지 않습니다. 모든 트래픽은 Anthropic API를 통해 TLS로 암호화되어 중계됩니다.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;요구 사항:&lt;/strong&gt; Pro 또는 Max 플랜 구독 필요. API 키만으로는 동작하지 않습니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;3.2 처음 Remote Control 시작하기 (QR 코드)&lt;/h3&gt;
+&lt;p&gt;세션을 시작할 때부터 Remote Control을 활성화하려면 아래와 같이 실행합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;claude&lt;span class="w"&gt; &lt;/span&gt;remote-control
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;터미널에 세션 URL과 QR 코드가 표시됩니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="err"&gt;╔══════════════════════════════════════════╗&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="n"&gt;Remote&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Control&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Session&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Active&lt;/span&gt;&lt;span class="w"&gt;          &lt;/span&gt;&lt;span class="err"&gt;║&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="n"&gt;https&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="c1"&gt;//claude.ai/code/session/xxxxx   ║&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;                                          &lt;/span&gt;&lt;span class="err"&gt;║&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;QR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;CODE&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="w"&gt;                              &lt;/span&gt;&lt;span class="err"&gt;║&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;                                          &lt;/span&gt;&lt;span class="err"&gt;║&lt;/span&gt;
+&lt;span class="err"&gt;║&lt;/span&gt;&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="n"&gt;Press&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;SPACE&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;show&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;hide&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;QR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;code&lt;/span&gt;&lt;span class="w"&gt;       &lt;/span&gt;&lt;span class="err"&gt;║&lt;/span&gt;
+&lt;span class="err"&gt;╚══════════════════════════════════════════╝&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;스마트폰으로 QR 코드를 스캔하면 Claude.ai 앱이나 브라우저에서 세션에 접속할 수 있습니다.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;주의:&lt;/strong&gt; 세션 URL이 노출되면 누구든 접속할 수 있습니다. QR 코드나 URL을 공개 장소에서 노출하지 않도록 주의하세요.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h3&gt;3.3 실행 중인 세션에 Remote Control 연결하기&lt;/h3&gt;
+&lt;p&gt;이미 실행 중인 세션에 나중에 Remote Control을 붙이는 것도 가능합니다. 세션 내에서 아래 슬래시 커맨드를 입력합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;/remote-control
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;또는 단축 버전:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;/rc
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;기존 대화 히스토리를 그대로 유지하면서 Remote Control이 활성화됩니다. 래퍼 스크립트로 Claude를 시작하고, 자리를 비우기 전에 &lt;code&gt;/rc&lt;/code&gt;를 입력하고 QR을 스캔하는 것이 일반적인 워크플로입니다.&lt;/p&gt;
+&lt;p&gt;모든 세션에 자동으로 Remote Control을 활성화하고 싶다면 세션 내에서 아래를 실행합니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;/config
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;설정에서 &lt;strong&gt;Enable Remote Control for all sessions&lt;/strong&gt;를 &lt;code&gt;true&lt;/code&gt;로 변경하면 매번 &lt;code&gt;/rc&lt;/code&gt;를 입력하지 않아도 됩니다.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="image_04.png" src="../images/claude_code_rc/image_04.png"&gt;&lt;/p&gt;
+&lt;h3&gt;3.4 앱에서 세션 연결&lt;/h3&gt;
+&lt;p&gt;Claude iOS/Android 앱 또는 &lt;code&gt;claude.ai/code&lt;/code&gt;에서 Remote Control 세션 목록을 확인할 수 있습니다. 온라인 상태인 세션은 컴퓨터 아이콘에 초록색 점이 표시됩니다.&lt;/p&gt;
+&lt;p&gt;앱에서 할 수 있는 작업은 다음과 같습니다.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;새로운 프롬프트 전송&lt;/li&gt;
+&lt;li&gt;진행 상황 실시간 확인&lt;/li&gt;
+&lt;li&gt;도구 호출 승인 또는 거부&lt;/li&gt;
+&lt;li&gt;세션 이름 변경 및 관리&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img src="../images/claude_code_rc/image_02.png" width="300"&gt;
+&lt;img src="../images/claude_code_rc/image_03.png" width="300"&gt;&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2&gt;4. 전체 워크플로 정리&lt;/h2&gt;
+&lt;p&gt;실제 사용 흐름을 정리하면 이렇습니다.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;터미널에서&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;claude&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;실행
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;▼
+&lt;span class="o"&gt;~/&lt;/span&gt;&lt;span class="nv"&gt;claude&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nv"&gt;launch&lt;/span&gt;.&lt;span class="nv"&gt;sh&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;실행
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;├─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;이미&lt;span class="w"&gt; &lt;/span&gt;실행&lt;span class="w"&gt; &lt;/span&gt;중?&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;건너뜀
+&lt;span class="w"&gt;    &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;미실행?&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;시작,&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;PID&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;파일&lt;span class="w"&gt; &lt;/span&gt;저장
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;▼
+&lt;span class="nv"&gt;Claude&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;Code&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;세션&lt;span class="w"&gt; &lt;/span&gt;시작
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;├─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;SessionStart&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;훅&lt;span class="w"&gt; &lt;/span&gt;발생&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nv"&gt;start&lt;/span&gt;.&lt;span class="nv"&gt;sh&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;실행&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;중복&lt;span class="w"&gt; &lt;/span&gt;방지&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;├─&lt;span class="w"&gt; &lt;/span&gt;자리&lt;span class="w"&gt; &lt;/span&gt;비우기&lt;span class="w"&gt; &lt;/span&gt;전:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nv"&gt;rc&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;입력&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;QR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;코드&lt;span class="w"&gt; &lt;/span&gt;스캔&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;스마트폰&lt;span class="w"&gt; &lt;/span&gt;연결
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;├─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;MacBook&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;화면&lt;span class="w"&gt; &lt;/span&gt;잠금&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="nv"&gt;Cmd&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="nv"&gt;Ctrl&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="nv"&gt;Q&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;    &lt;/span&gt;│&lt;span class="w"&gt;     &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nv"&gt;i&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;덕분에&lt;span class="w"&gt; &lt;/span&gt;시스템&lt;span class="w"&gt; &lt;/span&gt;슬립&lt;span class="w"&gt; &lt;/span&gt;방지
+&lt;span class="w"&gt;    &lt;/span&gt;│&lt;span class="w"&gt;     &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;Claude&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;Code&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;계속&lt;span class="w"&gt; &lt;/span&gt;실행
+&lt;span class="w"&gt;    &lt;/span&gt;│&lt;span class="w"&gt;     &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;스마트폰으로&lt;span class="w"&gt; &lt;/span&gt;모니터링,&lt;span class="w"&gt; &lt;/span&gt;지시,&lt;span class="w"&gt; &lt;/span&gt;권한&lt;span class="w"&gt; &lt;/span&gt;승인
+&lt;span class="w"&gt;    &lt;/span&gt;│
+&lt;span class="w"&gt;    &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;세션&lt;span class="w"&gt; &lt;/span&gt;종료&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;(&lt;/span&gt;&lt;span class="k"&gt;exit&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;또는&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;Ctrl&lt;/span&gt;&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="nv"&gt;C&lt;/span&gt;&lt;span class="ss"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;          &lt;/span&gt;│
+&lt;span class="w"&gt;          &lt;/span&gt;├─&lt;span class="w"&gt; &lt;/span&gt;다른&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;claude&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;세션&lt;span class="w"&gt; &lt;/span&gt;실행&lt;span class="w"&gt; &lt;/span&gt;중?&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;유지
+&lt;span class="w"&gt;          &lt;/span&gt;└─&lt;span class="w"&gt; &lt;/span&gt;마지막&lt;span class="w"&gt; &lt;/span&gt;세션?&lt;span class="w"&gt; &lt;/span&gt;→&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;PID&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;파일&lt;span class="w"&gt; &lt;/span&gt;읽어서&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;caffeinate&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;종료
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;hr&gt;
+&lt;h2&gt;5. 알려진 제한 사항&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Remote Control은 현재 리서치 프리뷰입니다.&lt;/strong&gt; 기능이나 제한이 언제든 변경될 수 있습니다.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;네트워크 연결이 약 10분간 끊기면 세션이 타임아웃됩니다.&lt;/strong&gt; &lt;code&gt;claude remote-control&lt;/code&gt;을 다시 실행해 새 세션을 시작해야 합니다.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;caffeinate -i는 시스템 슬립만 방지합니다.&lt;/strong&gt; MacBook 덮개를 닫으면(클램쉘) 슬립에 진입할 수 있습니다. 덮개를 닫은 채로 실행하려면 외부 모니터 연결 또는 &lt;code&gt;-s&lt;/code&gt; 플래그(전원 연결 상태)를 추가로 고려해야 합니다.&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;Remote Control 도구 호출 자동 승인은 지원되지 않습니다.&lt;/strong&gt; &lt;code&gt;--dangerously-skip-permissions&lt;/code&gt; 플래그가 Remote Control 세션에 적용되지 않아, 도구 호출마다 수동 승인이 필요합니다.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2&gt;6. 마치며&lt;/h2&gt;
+&lt;p&gt;이 설정을 사용하면 MacBook을 잠근 채로 자리를 비워도 Claude Code가 계속 실행됩니다. 스마트폰으로 진행 상황을 확인하고, 필요한 승인을 내리고, 새로운 지시를 줄 수 있습니다.&lt;/p&gt;
+&lt;p&gt;특별한 VPS나 외부 서버 없이, macOS 기본 도구(&lt;code&gt;caffeinate&lt;/code&gt;)와 Claude Code의 내장 기능(&lt;code&gt;SessionStart&lt;/code&gt; 훅, Remote Control)만으로 구성한다는 점이 이 방법의 장점입니다.&lt;/p&gt;
+&lt;p&gt;OpenClaw처럼 24시간 자율적으로 동작하는 에이전트는 아닙니다. 하지만 "내가 자리를 비운 사이 Claude가 계속 작업을 진행하고, 필요할 때 스마트폰으로 방향을 잡아줄 수 있다"는 목적에는 충분합니다.&lt;/p&gt;</content><category term="agent"></category><category term="ai"></category><category term="tools"></category><category term="macbook"></category></entry></feed>
