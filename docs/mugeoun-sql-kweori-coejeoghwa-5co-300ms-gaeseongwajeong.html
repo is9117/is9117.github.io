@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="ko" prefix="og: http://ogp.me/ns#">
+	<head>
+		<link href="http://gmpg.org/xfn/11" rel="profile">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<!-- Metadata -->
+	<meta name="description" content="">
+	<meta property="og:description" content="">
+	<meta property="og:title" content="무거운 SQL 쿼리 최적화: 5초 -> 300ms 개선과정" />
+	<meta property="og:type" content="article" />
+	<meta property="og:url" content="https://blog.i544c.com/mugeoun-sql-kweori-coejeoghwa-5co-300ms-gaeseongwajeong.html" />
+		<meta property="og:image" content="https://blog.i544c.com/images/profile.jpeg" />
+
+		<!-- Enable responsiveness on mobile devices-->
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+		<title>Isaac's Tech Blog</title>
+
+		<!-- CSS -->
+		<link href="//fonts.googleapis.com/" rel="dns-prefetch">
+		<link href="//fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic|Abril+Fatface|PT+Sans:400,400italic,700&amp;subset=latin,latin-ext" rel="stylesheet">
+
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/poole.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/hyde.css" />
+		<link rel="stylesheet" href="https://blog.i544c.com/theme/css/syntax.css" />
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.1.7/css/fork-awesome.min.css" crossorigin="anonymous">
+
+		<!-- Feeds -->
+<link href="https://blog.i544c.com/feeds/all.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Full Atom Feed" />
+<link href="https://blog.i544c.com/feeds/markdown.atom.xml" type="application/atom+xml" rel="alternate" title="Isaac's Tech Blog Categories Atom Feed" />
+
+		<!-- Analytics -->
+	</head>
+
+	<body class="theme-base-0d">
+<div class="sidebar">
+	<div class="container sidebar-sticky">
+		<div class="sidebar-about">
+
+			<h1>
+				<a href="https://blog.i544c.com/">
+					<img class="profile-picture" src="https://blog.i544c.com/images/profile.jpeg">
+					Isaac's Tech Blog
+				</a>
+			</h1>
+			<p class="lead"></p>
+			<p class="lead"> </p>
+			<p></p>
+		</div>
+			<ul class="sidebar-nav">
+			</ul>
+		<nav class="sidebar-social">
+					<a class="sidebar-social-item" href="mailto:is9117@me.com">
+						<i class="fa fa-envelope"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://x.com/i544c_park" target="_blank">
+						<i class="fa fa-twitter"></i>
+					</a>
+					<a class="sidebar-social-item" href="https://solved.ac/profile/is9117" target="_blank">
+						<i class="fa fa-trophy"></i>
+					</a>
+			<a class="sidebar-social-item" href="https://blog.i544c.com/feeds/all.atom.xml">
+				<i class="fa fa-rss"></i>
+			</a>
+		</nav>
+	</div>
+</div>		<div class="content container">
+<div class="post">
+	<h1 class="post-title">무거운 SQL 쿼리 최적화: 5초 -> 300ms 개선과정</h1>
+	<span class="post-date">Thu 12 March 2026</span>
+	<hr>
+<blockquote>
+<p>이 글에서 다루는 코드와 데이터는 기밀 유지를 위해 일부 이름과 용어를 익명화했습니다.</p>
+</blockquote>
+<h2>1. 현재 상황과 아키텍처</h2>
+<p>내부 관리 플랫폼에서 ChangeRequest(변경 요청) 관리 기능을 제공하고 있습니다. 사용자가 리소스의 배포, 중지, 재배포 등을 요청하면 권한을 가진 관리자가 이를 승인하거나 반려하는 구조입니다.</p>
+<p>이번 글에서 다루는 문제는 단순히 “쿼리 하나가 느리다” 수준이 아니라, 목록 조회 전체가 여러 단계의 쿼리와 ORM 로딩 비용까지 겹치면서 응답 시간이 크게 증가하던 사례입니다.</p>
+<h3>데이터 모델</h3>
+<div class="highlight"><pre><span></span><code>ChangeRequest
+  ├─ target_type (SERVICE, WORKFLOW, DASHBOARD, ...)
+  ├─ target_version_id ──→ Version (ServiceVersion, WorkflowVersion, ...)
+  ├─ submitter_id ──→ User
+  └─ reviewer_id  ──→ User
+
+Version ──→ Parent (Service, Workflow, Dashboard, ...)
+Parent  ──→ TargetMeta ──→ ProjectSpace
+</code></pre></div>
+
+<h3><code>change_request_tb</code> 스키마</h3>
+<table>
+<thead>
+<tr>
+<th>컬럼</th>
+<th>타입</th>
+<th>설명</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td>INT PK</td>
+<td></td>
+</tr>
+<tr>
+<td><code>target_type</code></td>
+<td>VARCHAR</td>
+<td>SERVICE, WORKFLOW, DASHBOARD 등 6종</td>
+</tr>
+<tr>
+<td><code>target_version_id</code></td>
+<td>INT</td>
+<td>Version/Deployment 테이블의 FK</td>
+</tr>
+<tr>
+<td><code>submitter_id</code></td>
+<td>INT FK → user_tb</td>
+<td>요청자</td>
+</tr>
+<tr>
+<td><code>reviewer_id</code></td>
+<td>INT FK → user_tb</td>
+<td>승인자</td>
+</tr>
+<tr>
+<td><code>requested_action</code></td>
+<td>VARCHAR</td>
+<td>Activate, Deactivate, Reactivate</td>
+</tr>
+<tr>
+<td><code>review_status</code></td>
+<td>VARCHAR</td>
+<td>NULL(대기), Approved, Denied</td>
+</tr>
+<tr>
+<td><code>comment</code></td>
+<td>TEXT</td>
+<td>코멘트</td>
+</tr>
+</tbody>
+</table>
+<h3>3-Phase 쿼리 구조</h3>
+<p>목록 조회는 3단계로 실행됩니다.</p>
+<ol>
+<li><strong>Phase 1 (COUNT)</strong>: <code>base_query</code>를 서브쿼리로 감싸 <code>SELECT count(*)</code></li>
+<li><strong>Phase 2 (PAGE IDs)</strong>: <code>base_query</code>에서 <code>ORDER BY</code> + <code>OFFSET/LIMIT</code>으로 현재 페이지 ID 추출</li>
+<li><strong>Phase 3 (DETAIL)</strong>: <code>WHERE id IN (page_ids)</code>로 상세 데이터 조회</li>
+</ol>
+<p>구조 자체는 흔한 패턴이지만, 실제 실행 결과는 꽤 무거웠습니다.</p>
+<ul>
+<li><strong>Admin 사용자 기준</strong>: 144개 쿼리, 5,807ms</li>
+<li><strong>Non-admin 사용자 기준</strong>: 110개 쿼리, 1,692ms</li>
+</ul>
+<p>즉 병목은 단일 SQL 한 줄에만 있는 것이 아니라, COUNT / 페이지 조회 / 상세 조회 / ORM 추가 로딩이 모두 합쳐진 형태였습니다.</p>
+<hr>
+<h2>2. SQL 프로파일러</h2>
+<p>SQLAlchemy를 사용할 때는 ORM이 생성하는 실제 SQL과 바인드 파라미터, 그리고 각 쿼리의 실행 시간을 한눈에 보기 어렵습니다.
+그래서 이번에는 커스텀 프로파일러를 만들어 아래 기능을 확인할 수 있도록 했습니다.</p>
+<ul>
+<li>실제 실행 SQL 확인</li>
+<li>파라미터 인라인</li>
+<li>쿼리별 실행 시간 측정</li>
+<li><code>SQL_NO_CACHE</code> 자동 주입</li>
+</ul>
+<h3>SQLAlchemy 이벤트 훅</h3>
+<div class="highlight"><pre><span></span><code><span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">engine</span><span class="o">.</span><span class="n">sync_engine</span><span class="p">,</span> <span class="s2">&quot;before_cursor_execute&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_before_execute</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">statement</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">executemany</span><span class="p">):</span>
+    <span class="n">conn</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;_query_start&quot;</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">())</span>
+
+<span class="nd">@event</span><span class="o">.</span><span class="n">listens_for</span><span class="p">(</span><span class="n">engine</span><span class="o">.</span><span class="n">sync_engine</span><span class="p">,</span> <span class="s2">&quot;after_cursor_execute&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_after_execute</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">statement</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">executemany</span><span class="p">):</span>
+    <span class="n">elapsed_ms</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span>
+        <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">conn</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;_query_start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">())</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">3</span>
+    <span class="p">)</span>
+    <span class="n">_sql_profiles</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+        <span class="s2">&quot;ms&quot;</span><span class="p">:</span> <span class="n">elapsed_ms</span><span class="p">,</span>
+        <span class="s2">&quot;sql&quot;</span><span class="p">:</span> <span class="n">_inline_params</span><span class="p">(</span><span class="n">statement</span><span class="p">,</span> <span class="n">parameters</span><span class="p">),</span>
+    <span class="p">})</span>
+</code></pre></div>
+
+<h3>파라미터 인라인 헬퍼</h3>
+<div class="highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">_inline_params</span><span class="p">(</span><span class="n">stmt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">params</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;바인드 파라미터를 SQL에 직접 삽입하여 실행 가능한 쿼리 생성.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">escaped</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">_escape</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">params</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;%\((\w+)\)s&quot;</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">m</span><span class="p">:</span> <span class="n">escaped</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s2">&quot;NULL&quot;</span><span class="p">),</span> <span class="n">stmt</span><span class="p">)</span>
+    <span class="c1"># ... tuple/list 처리</span>
+</code></pre></div>
+
+<h3><code>SQL_NO_CACHE</code> 컨텍스트 매니저</h3>
+<p>MySQL 쿼리 캐시 영향을 최대한 줄이고, 순수 실행 시간 경향을 보기 위해 <code>SQL_NO_CACHE</code>를 주입했습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mysql_sql_no_cache</span><span class="p">(</span><span class="n">engine</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_inject</span><span class="p">(</span><span class="n">conn</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">statement</span><span class="p">,</span> <span class="n">parameters</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">executemany</span><span class="p">):</span>
+        <span class="n">stripped</span> <span class="o">=</span> <span class="n">statement</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stripped</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;SELECT &quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">statement</span><span class="p">,</span> <span class="n">parameters</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;SELECT SQL_NO_CACHE </span><span class="si">{</span><span class="n">stripped</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">parameters</span>
+
+    <span class="n">event</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="n">sync_engine</span><span class="p">,</span> <span class="s2">&quot;before_cursor_execute&quot;</span><span class="p">,</span> <span class="n">_inject</span><span class="p">,</span> <span class="n">retval</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">yield</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">sync_engine</span><span class="p">,</span> <span class="s2">&quot;before_cursor_execute&quot;</span><span class="p">,</span> <span class="n">_inject</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>프로파일 출력 예시</h3>
+<div class="highlight"><pre><span></span><code>======================================================================
+  SQL PROFILE REPORT — 144 queries, 5807.37ms total
+======================================================================
+
+  [10] 🐢 SLOW  1677.123ms
+  ------------------------------------------------------------------
+  SELECT SQL_NO_CACHE count(*) FROM (SELECT ... ) AS anon_1
+
+  [11] 🐢 SLOW  1666.456ms
+  ------------------------------------------------------------------
+  SELECT SQL_NO_CACHE anon_1.approval_id FROM (SELECT ... ) AS anon_1 ...
+</code></pre></div>
+
+<hr>
+<h2>3. 프로파일 결과 분석</h2>
+<h3>최적화 전 (Admin, 144 쿼리, 5,807ms)</h3>
+<table>
+<thead>
+<tr>
+<th>쿼리 번호</th>
+<th>소요시간</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>[1]–[9]</td>
+<td>~156ms</td>
+<td>사전 설정 (statements, writable IDs 등)</td>
+</tr>
+<tr>
+<td>[10]</td>
+<td><strong>1,677ms</strong></td>
+<td>Phase 1 — COUNT</td>
+</tr>
+<tr>
+<td>[11]</td>
+<td><strong>1,666ms</strong></td>
+<td>Phase 2 — PAGE IDs</td>
+</tr>
+<tr>
+<td>[12]</td>
+<td>150ms</td>
+<td>Phase 3 — DETAIL</td>
+</tr>
+<tr>
+<td>[13]–[144]</td>
+<td><strong>~2,145ms</strong></td>
+<td>ORM selectin cascade (132쿼리)</td>
+</tr>
+</tbody>
+</table>
+<p>여기서 바로 보이는 것은 다음 두 가지입니다.</p>
+<ol>
+<li><strong>Phase 1, 2가 비정상적으로 무겁다</strong></li>
+<li><strong>Phase 3 이후 ORM 추가 쿼리가 과도하게 발생한다</strong></li>
+</ol>
+<h3>3가지 병목 식별</h3>
+<p><strong>병목 1</strong>: Phase 1, 2의 <code>target_meta_tb</code> BNL join</p>
+<p><code>base_query</code>에 <code>target_meta_tb</code>가 6-arm OR 조건으로 outer join되어 있었습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="n">base_query</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">select</span><span class="p">(</span>
+        <span class="n">ChangeRequest</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;request_id&#39;</span><span class="p">),</span>
+        <span class="c1"># ...</span>
+        <span class="n">ProjectSpace</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;project_space_name&#39;</span><span class="p">),</span>  <span class="c1"># ← 이것 때문에 join 필요</span>
+    <span class="p">)</span>
+    <span class="c1"># ... 12개 revision/parent outerjoin ...</span>
+    <span class="o">.</span><span class="n">outerjoin</span><span class="p">(</span>
+        <span class="n">TargetMeta</span><span class="p">,</span>
+        <span class="n">or_</span><span class="p">(</span>
+            <span class="n">and_</span><span class="p">(</span><span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_type</span> <span class="o">==</span> <span class="s1">&#39;SERVICE&#39;</span><span class="p">,</span>
+                 <span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_version_id</span> <span class="o">==</span> <span class="n">ServiceVersion</span><span class="o">.</span><span class="n">service_id</span><span class="p">),</span>
+            <span class="n">and_</span><span class="p">(</span><span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_type</span> <span class="o">==</span> <span class="s1">&#39;WORKFLOW&#39;</span><span class="p">,</span>
+                 <span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_version_id</span> <span class="o">==</span> <span class="n">WorkflowVersion</span><span class="o">.</span><span class="n">workflow_id</span><span class="p">),</span>
+            <span class="c1"># ... 4개 더</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">outerjoin</span><span class="p">(</span><span class="n">ProjectSpace</span><span class="p">,</span> <span class="n">ProjectSpace</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">TargetMeta</span><span class="o">.</span><span class="n">project_space_id</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>문제는 이 join이 COUNT와 PAGE IDs 단계에도 그대로 포함되어 있었다는 점입니다.
+즉 실제로 아직 상세 데이터가 필요하지 않은 단계에서도, 무거운 join 비용을 계속 지불하고 있었습니다.</p>
+<p><strong>병목 2</strong>: Phase 3에서 ORM 객체 전체 SELECT → selectin cascade</p>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span>
+    <span class="n">ChangeRequest</span><span class="p">,</span>
+    <span class="c1"># ...</span>
+    <span class="n">ServiceVersion</span><span class="p">,</span>          <span class="c1"># ← ORM 객체</span>
+    <span class="n">AutomationRelease</span><span class="p">,</span>       <span class="c1"># ← ORM 객체</span>
+    <span class="n">Automation</span><span class="p">,</span>              <span class="c1"># ← ORM 객체</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>이렇게 ORM 객체 전체를 SELECT에 포함하면, 결과 반환 이후 SQLAlchemy가 <code>lazy='selectin'</code> 관계를 따라 추가 로딩을 수행할 수 있습니다.</p>
+<p>이번 케이스에서는 이 비용이 매우 크게 나타났고, 결과적으로 <strong>132개 추가 쿼리</strong>가 발생했습니다.</p>
+<p><strong>병목 3</strong>: Non-admin N+1 <code>get_user_statements()</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">request</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">project_space_name</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_admin</span><span class="p">:</span>
+        <span class="c1"># 캐시 미스마다 DB 조회 발생</span>
+        <span class="n">updatable</span> <span class="o">=</span> <span class="k">await</span> <span class="n">permission_service</span><span class="o">.</span><span class="n">can_user_create_resource</span><span class="p">(</span>
+            <span class="n">resource_type</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">target_type</span><span class="p">,</span>
+            <span class="n">project_space_name</span><span class="o">=</span><span class="n">project_space_name</span><span class="p">,</span>
+            <span class="o">...</span>
+        <span class="p">)</span>
+</code></pre></div>
+
+<p>권한 체크 자체는 필요하지만, 동일한 성격의 데이터를 반복 조회하면서 N+1 형태가 발생하고 있었습니다.</p>
+<hr>
+<h2>4. EXPLAIN ANALYZE로 쿼리 분석</h2>
+<p>Phase 1 COUNT 쿼리에 <code>ANALYZE SQL_NO_CACHE</code>를 실행했습니다.</p>
+<table>
+<thead>
+<tr>
+<th>table</th>
+<th>type</th>
+<th>rows</th>
+<th>r_rows</th>
+<th>Extra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>change_request_tb</td>
+<td>ALL</td>
+<td>6,428</td>
+<td>6,293</td>
+<td>Using where</td>
+</tr>
+<tr>
+<td>service_version_tb</td>
+<td>eq_ref</td>
+<td>1</td>
+<td>0.24</td>
+<td>Using where</td>
+</tr>
+<tr>
+<td>service_tb</td>
+<td>eq_ref</td>
+<td>1</td>
+<td>0.20</td>
+<td>Using where</td>
+</tr>
+<tr>
+<td>...</td>
+<td>eq_ref</td>
+<td>1</td>
+<td>...</td>
+<td>...</td>
+</tr>
+<tr>
+<td><strong>target_meta_tb</strong></td>
+<td><strong>ALL</strong></td>
+<td><strong>5,173</strong></td>
+<td><strong>5,177</strong></td>
+<td><strong>Using where; BNL join</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>change_request_tb</code> 6,293행과 <code>target_meta_tb</code> 5,177행이 결합되면서, 대략 <strong>3,260만 번 수준의 비교 연산</strong>이 발생하고 있었습니다.</p>
+<p>즉 <code>OR</code> 기반 join 조건이 인덱스 활용을 어렵게 만들고, 그 결과 BNL(Block Nested Loop) 풀 스캔이 발생한 것입니다.</p>
+<hr>
+<h2>5. 근본 원인 분석</h2>
+<p>정리하면 병목은 아래 3가지로 분류할 수 있었습니다.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>근본 원인</th>
+<th>영향 범위</th>
+<th>소요시간</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Phase 1,2의 <code>target_meta_tb</code> + <code>project_space_tb</code> join</td>
+<td>Phase 1+2</td>
+<td>3,343ms (58%)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Phase 3 ORM selectin cascade</td>
+<td>132 쿼리</td>
+<td>~2,145ms (37%)</td>
+</tr>
+<tr>
+<td>3</td>
+<td>N+1 <code>get_user_statements()</code></td>
+<td>~14 쿼리</td>
+<td>~170ms (non-admin)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>6. 수정 전략</h2>
+<p>수정 방향은 다음 3가지로 잡았습니다.</p>
+<ol>
+<li><strong>Fix 1</strong>: <code>base_query</code>에서 <code>target_meta_tb</code> / <code>project_space_tb</code> join 제거, Phase 3에서만 유지</li>
+<li><strong>Fix 2</strong>: Phase 3 SELECT에서 ORM 객체를 스칼라 컬럼으로 교체</li>
+<li><strong>Fix 3</strong>: <code>user_statements</code>를 사전 조회하여 동기 헬퍼에 전달</li>
+</ol>
+<hr>
+<h2>7. 테스트 먼저 — 회귀 방지</h2>
+<p>최적화 작업에서 종종 놓치기 쉬운 것이 “성능은 좋아졌는데 기능이 깨지는 문제”입니다.
+그래서 코드 변경 전에 성능 회귀 테스트와 기능 회귀 테스트를 먼저 작성합니다.</p>
+<h3>QueryCounter</h3>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">QueryCounter</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;SQLAlchemy 엔진의 쿼리 수와 총 소요시간을 측정하는 컨텍스트 매니저.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">engine</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">engine</span> <span class="o">=</span> <span class="n">engine</span><span class="o">.</span><span class="n">sync_engine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_before_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">executemany</span><span class="p">):</span>
+        <span class="n">conn</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;_qc_start&quot;</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">())</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_after_execute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">conn</span><span class="p">,</span> <span class="n">cursor</span><span class="p">,</span> <span class="n">stmt</span><span class="p">,</span> <span class="n">params</span><span class="p">,</span> <span class="n">context</span><span class="p">,</span> <span class="n">executemany</span><span class="p">):</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;_qc_start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">*</span> <span class="mi">1000</span><span class="p">})</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">queries</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;before_cursor_execute&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_before_execute</span><span class="p">)</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">listen</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;after_cursor_execute&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_after_execute</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;before_cursor_execute&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_before_execute</span><span class="p">)</span>
+        <span class="n">event</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">engine</span><span class="p">,</span> <span class="s2">&quot;after_cursor_execute&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_after_execute</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">queries</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total_time_ms</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">q</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">q</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">queries</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>성능 회귀 테스트</h3>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_admin_default_query_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">QueryCounter</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">qc</span><span class="p">:</span>
+        <span class="n">total</span><span class="p">,</span> <span class="n">approvals</span> <span class="o">=</span> <span class="k">await</span> <span class="n">list_change_requests</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span> <span class="n">pg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pg_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">1000</span>
+    <span class="k">assert</span> <span class="n">qc</span><span class="o">.</span><span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">25</span>      <span class="c1"># 쿼리 수 상한</span>
+    <span class="k">assert</span> <span class="n">qc</span><span class="o">.</span><span class="n">total_time_ms</span> <span class="o">&lt;</span> <span class="mi">500</span>  <span class="c1"># 시간 상한 (ms)</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_non_admin_default_query_count</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">QueryCounter</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span> <span class="k">as</span> <span class="n">qc</span><span class="p">:</span>
+        <span class="n">total</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="k">await</span> <span class="n">list_change_requests</span><span class="p">(</span><span class="n">user</span><span class="o">=</span><span class="n">non_admin</span><span class="p">,</span> <span class="n">pg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pg_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">total</span> <span class="o">==</span> <span class="mi">500</span>
+    <span class="k">assert</span> <span class="n">qc</span><span class="o">.</span><span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">35</span>
+    <span class="k">assert</span> <span class="n">qc</span><span class="o">.</span><span class="n">total_time_ms</span> <span class="o">&lt;</span> <span class="mi">500</span>
+</code></pre></div>
+
+<h3>기능 회귀 테스트</h3>
+<p>성능 개선 과정에서 정렬, 필터 등 기존 기능이 깨지지 않았는지도 함께 검증합니다.
+예를 들어 <code>base_query</code>의 join을 변경하면 ORDER BY 동작이 달라질 수 있으므로, 정렬 테스트를 미리 작성해 두었습니다.</p>
+<div class="highlight"><pre><span></span><code><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_order_by_id_desc</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;ID 내림차순 정렬이 올바르게 동작하는지 검증.&quot;&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">create_multiple_change_requests</span><span class="p">(</span>
+        <span class="n">session</span><span class="p">,</span> <span class="n">admin</span><span class="p">,</span> <span class="n">project_space</span><span class="p">,</span> <span class="n">base_resources</span><span class="p">,</span>
+        <span class="n">count</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;order-test&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">total</span><span class="p">,</span> <span class="n">responses</span> <span class="o">=</span> <span class="k">await</span> <span class="n">list_change_requests</span><span class="p">(</span>
+        <span class="n">user</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span> <span class="n">pg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pg_size</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+        <span class="n">order_field</span><span class="o">=</span><span class="n">OrderField</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">order_type</span><span class="o">=</span><span class="n">OrderType</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span>
+        <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">ids</span> <span class="o">==</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span> <span class="s2">&quot;IDs should be in descending order&quot;</span>
+
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">test_order_by_target_type</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;target_type 정렬: asc와 desc가 서로 역순인지 검증.&quot;&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">create_multiple_change_requests</span><span class="p">(</span>
+        <span class="n">session</span><span class="p">,</span> <span class="n">admin</span><span class="p">,</span> <span class="n">project_space</span><span class="p">,</span> <span class="n">base_resources</span><span class="p">,</span>
+        <span class="n">count</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;order-test&#39;</span>
+    <span class="p">)</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">responses_asc</span> <span class="o">=</span> <span class="k">await</span> <span class="n">list_change_requests</span><span class="p">(</span>
+        <span class="n">user</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span> <span class="n">pg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pg_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">order_field</span><span class="o">=</span><span class="n">OrderField</span><span class="o">.</span><span class="n">target_type</span><span class="p">,</span> <span class="n">order_type</span><span class="o">=</span><span class="n">OrderType</span><span class="o">.</span><span class="n">asc</span><span class="p">,</span>
+        <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">responses_desc</span> <span class="o">=</span> <span class="k">await</span> <span class="n">list_change_requests</span><span class="p">(</span>
+        <span class="n">user</span><span class="o">=</span><span class="n">admin</span><span class="p">,</span> <span class="n">pg</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">pg_size</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+        <span class="n">order_field</span><span class="o">=</span><span class="n">OrderField</span><span class="o">.</span><span class="n">target_type</span><span class="p">,</span> <span class="n">order_type</span><span class="o">=</span><span class="n">OrderType</span><span class="o">.</span><span class="n">desc</span><span class="p">,</span>
+        <span class="n">session</span><span class="o">=</span><span class="n">session</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">types_asc</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">target_type</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses_asc</span><span class="p">]</span>
+    <span class="n">types_desc</span> <span class="o">=</span> <span class="p">[</span><span class="n">r</span><span class="o">.</span><span class="n">target_type</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">responses_desc</span><span class="p">]</span>
+    <span class="k">assert</span> <span class="n">types_asc</span> <span class="o">==</span> <span class="nb">list</span><span class="p">(</span><span class="nb">reversed</span><span class="p">(</span><span class="n">types_desc</span><span class="p">))</span>
+</code></pre></div>
+
+<p>이런 기능 테스트가 있으면 join을 제거하거나 SELECT 컬럼을 변경해도 <strong>정렬/필터 동작 등 기능이 그대로인지 즉시 확인</strong>할 수 있습니다.</p>
+<h3>테스트 데이터</h3>
+<ul>
+<li>1,000개 ChangeRequest (10개 ProjectSpace × 6개 target_type)</li>
+<li><code>SQL_NO_CACHE</code> 자동 주입으로 MySQL 캐시 제거</li>
+<li>Admin / Non-admin 각각 검증</li>
+<li>검색, 정렬, 필터 조합별 파라미터화 테스트</li>
+</ul>
+<p>이 테스트로 <strong>다시 느려지지 않도록 상한을 고정하는 역할</strong>도 합니다.</p>
+<hr>
+<h2>8. 코드 수정 적용</h2>
+<h3>Fix 1: <code>base_query</code>에서 <code>target_meta_tb</code> join 제거</h3>
+<p><strong>Before</strong> — Phase 1, 2 모두 <code>target_meta_tb</code> BNL join 포함</p>
+<div class="highlight"><pre><span></span><code><span class="n">base_query</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">select</span><span class="p">(</span>
+        <span class="n">ChangeRequest</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;request_id&#39;</span><span class="p">),</span>
+        <span class="c1"># ...</span>
+        <span class="n">ProjectSpace</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;project_space_name&#39;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="c1"># ... revision/parent outerjoins ...</span>
+    <span class="o">.</span><span class="n">outerjoin</span><span class="p">(</span>
+        <span class="n">TargetMeta</span><span class="p">,</span>
+        <span class="n">or_</span><span class="p">(</span>
+            <span class="n">and_</span><span class="p">(</span><span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_type</span> <span class="o">==</span> <span class="s1">&#39;SERVICE&#39;</span><span class="p">,</span>
+                 <span class="n">TargetMeta</span><span class="o">.</span><span class="n">target_version_id</span> <span class="o">==</span> <span class="n">ServiceVersion</span><span class="o">.</span><span class="n">service_id</span><span class="p">),</span>
+            <span class="c1"># ... 5개 더</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="o">.</span><span class="n">outerjoin</span><span class="p">(</span><span class="n">ProjectSpace</span><span class="p">,</span> <span class="n">ProjectSpace</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">TargetMeta</span><span class="o">.</span><span class="n">project_space_id</span><span class="p">)</span>
+    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p><strong>After</strong> — <code>target_meta_tb</code> / <code>project_space_tb</code> join 제거, Phase 3에서만 유지</p>
+<div class="highlight"><pre><span></span><code><span class="n">base_query</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">select</span><span class="p">(</span>
+        <span class="n">ChangeRequest</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;request_id&#39;</span><span class="p">),</span>
+        <span class="c1"># ...</span>
+        <span class="c1"># project_space_name 제거됨 — Phase 3에서만 필요</span>
+    <span class="p">)</span>
+    <span class="c1"># ... revision/parent outerjoins 유지 ...</span>
+    <span class="c1"># target_meta_tb, project_space_tb는 Phase 3에서만 사용</span>
+    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p>핵심: <strong>COUNT와 PAGE IDs 단계에서 필요하지 않은 join은 제거한다</strong>는 것입니다.</p>
+<h3>Fix 2: Phase 3 ORM 객체 → 스칼라 컬럼</h3>
+<p><strong>Before</strong></p>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span>
+    <span class="n">ChangeRequest</span><span class="p">,</span>
+    <span class="c1"># ...</span>
+    <span class="n">ServiceVersion</span><span class="p">,</span>          <span class="c1"># ORM 객체 전체 → selectin cascade 유발</span>
+    <span class="n">AutomationRelease</span><span class="p">,</span>       <span class="c1"># ORM 객체 전체</span>
+    <span class="n">Automation</span><span class="p">,</span>              <span class="c1"># ORM 객체 전체</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">request</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">svc_version</span><span class="p">,</span> <span class="n">auto_release</span><span class="p">,</span> <span class="n">automation</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">target_type</span> <span class="o">==</span> <span class="s1">&#39;AUTOMATION&#39;</span><span class="p">:</span>
+        <span class="n">parent_id</span> <span class="o">=</span> <span class="n">auto_release</span><span class="o">.</span><span class="n">automation_id</span>
+        <span class="n">parent_name</span> <span class="o">=</span> <span class="n">automation</span><span class="o">.</span><span class="n">name</span>
+    <span class="c1"># ...</span>
+    <span class="k">if</span> <span class="n">svc_version</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="o">...</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">is_external</span><span class="o">=</span><span class="n">svc_version</span><span class="o">.</span><span class="n">is_external</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>After</strong></p>
+<div class="highlight"><pre><span></span><code><span class="n">query</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span>
+    <span class="n">ChangeRequest</span><span class="p">,</span>
+    <span class="c1"># ...</span>
+    <span class="c1"># 스칼라 컬럼만 조회 — ORM 로딩 방지</span>
+    <span class="n">ServiceVersion</span><span class="o">.</span><span class="n">is_external</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;is_external&#39;</span><span class="p">),</span>
+    <span class="n">AutomationRelease</span><span class="o">.</span><span class="n">automation_id</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;auto_parent_id&#39;</span><span class="p">),</span>
+    <span class="n">Automation</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;auto_name&#39;</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">request</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">is_external</span><span class="p">,</span> <span class="n">auto_parent_id</span><span class="p">,</span> <span class="n">auto_name</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">target_type</span> <span class="o">==</span> <span class="s1">&#39;AUTOMATION&#39;</span><span class="p">:</span>
+        <span class="n">parent_id</span> <span class="o">=</span> <span class="n">auto_parent_id</span>
+        <span class="n">parent_name</span> <span class="o">=</span> <span class="n">auto_name</span>
+    <span class="c1"># ...</span>
+    <span class="k">if</span> <span class="n">is_external</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="o">...</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">is_external</span><span class="o">=</span><span class="n">is_external</span><span class="p">)</span>
+</code></pre></div>
+
+<p><strong>실제로 사용하는 값이 몇 개 안 된다면 ORM 객체 전체를 읽을 이유가 없습니다.</strong>
+필요한 스칼라 컬럼만 가져오는 편이 훨씬 안전하고 예측 가능합니다.</p>
+<h3>Fix 3: N+1 → 사전 조회 statements 전달</h3>
+<p><strong>Before</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 각 고유 (target_type, project_space_name) 쌍마다 DB 조회</span>
+<span class="n">updatable</span> <span class="o">=</span> <span class="k">await</span> <span class="n">permission_service</span><span class="o">.</span><span class="n">can_user_create_resource</span><span class="p">(</span>
+    <span class="n">resource_type</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">target_type</span><span class="p">,</span>
+    <span class="n">user</span><span class="o">=</span><span class="n">user</span><span class="p">,</span>
+    <span class="n">project_space_name</span><span class="o">=</span><span class="n">project_space_name</span><span class="p">,</span>
+    <span class="n">session</span><span class="o">=</span><span class="n">session</span>     <span class="c1"># ← 내부에서 get_user_statements() DB 호출</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p><strong>After</strong></p>
+<div class="highlight"><pre><span></span><code><span class="c1"># 함수 시작 시 이미 조회한 user_statements 재사용</span>
+<span class="n">updatable</span> <span class="o">=</span> <span class="n">permission_service</span><span class="o">.</span><span class="n">can_user_create_resource_from_statements</span><span class="p">(</span>
+    <span class="n">statements</span><span class="o">=</span><span class="n">user_statements</span><span class="p">,</span>   <span class="c1"># ← 사전 조회된 데이터</span>
+    <span class="n">resource_type</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">target_type</span><span class="p">,</span>
+    <span class="n">project_space_name</span><span class="o">=</span><span class="n">project_space_name</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<p><strong>반복 DB 조회를 제거하고 이미 읽은 데이터를 재사용</strong>하도록 개선했습니다.</p>
+<hr>
+<h2>9. 최적화 후 프로파일 비교</h2>
+<h3>After (Admin, 19 쿼리, 337ms)</h3>
+<table>
+<thead>
+<tr>
+<th>쿼리 번호</th>
+<th>소요시간</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>[1]–[9]</td>
+<td>~156ms</td>
+<td>사전 설정 (statements, writable IDs)</td>
+</tr>
+<tr>
+<td>[10]</td>
+<td><strong>12ms</strong></td>
+<td>Phase 1 — COUNT (target_meta join 제거)</td>
+</tr>
+<tr>
+<td>[11]</td>
+<td><strong>18ms</strong></td>
+<td>Phase 2 — PAGE IDs (target_meta join 제거)</td>
+</tr>
+<tr>
+<td>[12]</td>
+<td><strong>45ms</strong></td>
+<td>Phase 3 — DETAIL (target_meta BNL, 10행 입력)</td>
+</tr>
+<tr>
+<td>[13]–[19]</td>
+<td>~106ms</td>
+<td>User → Role → Policy 관계 eager-load</td>
+</tr>
+</tbody>
+</table>
+<h3>전후 비교</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>Admin 전</th>
+<th>Admin 후</th>
+<th>Non-admin 전</th>
+<th>Non-admin 후</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>총 쿼리 수</td>
+<td>144</td>
+<td><strong>19</strong></td>
+<td>110</td>
+<td><strong>28</strong></td>
+</tr>
+<tr>
+<td>총 소요시간</td>
+<td>5,807ms</td>
+<td><strong>337ms (17×)</strong></td>
+<td>1,692ms</td>
+<td><strong>543ms (3.1×)</strong></td>
+</tr>
+<tr>
+<td>Phase 1 (COUNT)</td>
+<td>1,677ms</td>
+<td><strong>12ms</strong></td>
+<td>62ms</td>
+<td><strong>32ms</strong></td>
+</tr>
+<tr>
+<td>Phase 2 (PAGE IDs)</td>
+<td>1,666ms</td>
+<td><strong>18ms</strong></td>
+<td>52ms</td>
+<td><strong>26ms</strong></td>
+</tr>
+<tr>
+<td>Phase 3 (DETAIL)</td>
+<td>150ms</td>
+<td><strong>45ms</strong></td>
+<td>131ms</td>
+<td><strong>121ms</strong></td>
+</tr>
+<tr>
+<td>ORM selectin</td>
+<td>132쿼리, 2,145ms</td>
+<td><strong>0쿼리</strong></td>
+<td>75쿼리, 900ms</td>
+<td><strong>0쿼리</strong></td>
+</tr>
+<tr>
+<td>N+1 statements</td>
+<td>—</td>
+<td>—</td>
+<td>14쿼리, 170ms</td>
+<td><strong>0쿼리</strong></td>
+</tr>
+</tbody>
+</table>
+<h3>현재 병목 분포 (Admin 337ms)</h3>
+<div class="highlight"><pre><span></span><code>사전 설정 (46%) ████████████████████████
+Phase 1+2  (9%) █████
+Phase 3   (13%) ███████
+User 관계 로딩 (31%) ████████████████
+</code></pre></div>
+
+<p>Fix 2로 리소스 객체의 selectin cascade(132쿼리)는 완전히 제거되었습니다. 남은 31%는 <code>ChangeRequest</code>의 <code>submitter</code>/<code>reviewer</code> → <code>User</code> → <code>Role</code> → <code>Policy</code> 관계의 eager-load로, 이번 최적화 대상과는 별개의 쿼리입니다.</p>
+<hr>
+<h2>10. 결론</h2>
+<p>3가지 수정을 통해 다음과 같은 개선을 얻었습니다.</p>
+<ul>
+<li><strong>Admin</strong>: 5.8초 → 337ms (<strong>17배 개선</strong>)</li>
+<li><strong>Non-admin</strong>: 1.7초 → 543ms (<strong>3.1배 개선</strong>)</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Fix</th>
+<th>내용</th>
+<th>효과</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Phase 1,2에서 <code>target_meta_tb</code> join 제거</td>
+<td>3,343ms → 30ms</td>
+</tr>
+<tr>
+<td>2</td>
+<td>ORM 객체 → 스칼라 컬럼</td>
+<td>132쿼리 제거</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>user_statements</code> 사전 조회 전달</td>
+<td>14쿼리 제거</td>
+</tr>
+</tbody>
+</table>
+<h3>핵심 교훈</h3>
+<ul>
+<li>
+<p><strong>ORM의 숨겨진 비용</strong>
+  <code>select(OrmModel)</code> 한 줄이 의도치 않은 추가 쿼리를 유발할 수 있습니다. 실제로 필요한 컬럼만 가져오는 것이 안전합니다.</p>
+</li>
+<li>
+<p><strong>프로파일러의 중요성</strong>
+  SQLAlchemy 이벤트 훅으로 파라미터 인라인과 타이밍을 수집하면, ORM이 숨기고 있는 실제 실행 비용을 드러낼 수 있습니다.</p>
+</li>
+<li>
+<p><strong>EXPLAIN이 보여주는 것</strong>
+  단순히 “느리다”가 아니라, 어떤 join 전략이 사용되었고 왜 비용이 커졌는지까지 확인할 수 있어야 합니다.</p>
+</li>
+<li>
+<p><strong>테스트 먼저</strong>
+  쿼리 수와 실행 시간의 상한을 테스트로 고정해 두면, 이후 리팩터링이나 기능 추가 시 성능 회귀를 훨씬 빨리 발견할 수 있습니다.</p>
+</li>
+</ul>
+<h3>향후 개선 여지</h3>
+<ul>
+<li><code>COUNT(*) OVER ()</code> 윈도우 함수로 Phase 1+2 병합</li>
+<li><code>target_meta_tb</code>에 <code>(target_type, target_version_id)</code> 복합 인덱스 추가</li>
+<li><code>change_request_tb</code> 비정규화 (<code>parent_name</code> 컬럼 추가)</li>
+</ul>
+
+		<span class="post-tags">
+			Tags:
+			<ul>
+					<li><a href="https://blog.i544c.com/tag/sql.html">sql</a></li>
+					<li><a href="https://blog.i544c.com/tag/optimization.html">optimization</a></li>
+					<li><a href="https://blog.i544c.com/tag/profile.html">profile</a></li>
+			</ul>
+		</span>
+
+</div>
+		</div>
+		<script>
+		(function() {
+			function getCookie(name) {
+			const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+			return match ? match[2] : null;
+			}
+
+			function setCookie(name, value, days) {
+			const expires = new Date(Date.now() + days * 864e5).toUTCString();
+			document.cookie = name + '=' + value + '; expires=' + expires + '; path=/; domain=.i544c.com';
+			}
+
+			let visitorId = getCookie('visitor_id');
+			if (!visitorId) {
+			visitorId = crypto.randomUUID();
+			setCookie('visitor_id', visitorId, 365);
+			}
+
+			const payload = {
+			path: window.location.pathname,
+			visitor_id: visitorId,
+			date: new Date().toISOString().slice(0, 10)  // "YYYY-MM-DD"
+			};
+
+			fetch("https://api.i544c.com/count", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(payload)
+			}).catch(err => console.error("Failed to POST visitor", err));
+		})();
+		</script>
+	</body>
+</html>
