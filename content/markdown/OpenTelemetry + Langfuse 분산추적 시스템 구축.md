@@ -1,6 +1,6 @@
 Title: OpenTelemetry + Langfuse 분산추적 시스템 구축
 Date: 2026-05-21 14:00
-Modified: 2026-05-21 14:00
+Modified: 2026-05-29 18:24
 Tags: backend, infra, observability, llm
 Author: 박이삭
 Category: infra
@@ -607,7 +607,7 @@ Langfuse는 `traces.metadata`·`observations.metadata` Map 컬럼의 key·value 
 
 ### 4.4 ClickHouse 쿼리 최적화
 
-LLM trace 시나리오에서 효율 차이가 가장 큰 5가지입니다.
+LLM trace 시나리오에서 효율 차이가 가장 큰 6가지입니다.
 
 #### 4.4.1 `FINAL`로 중복 제거 보장
 
@@ -619,7 +619,54 @@ WHERE trace_id = 'abc...'
 
 `ReplacingMergeTree`에서 머지가 끝나기 전 중복 row를 거르려면 `FINAL`이 필요합니다. 비용이 있으니 **꼭 필요한 데이터셋**에만 사용. trace 상세처럼 데이터 정확성이 중요한 경로에서는 켜고, 대시보드 집계처럼 약간의 noise를 허용할 수 있으면 끄는 식.
 
-#### 4.4.2 `project_id` 같은 정렬키 prefix 항상 명시
+#### 4.4.2 `FINAL` 회피 — CTE + `LIMIT 1 BY`로 skip index 살리기
+
+`FINAL`은 정확하지만 비쌉니다. `ReplacingMergeTree`의 중복을 쿼리 시점에 강제 머지로 해소하느라 **skip index를 못 쓰고** 대상 파트를 풀스캔하는 경향이 있습니다. hot-path(예: 채팅 로그 상세 조회)에서는 이게 그대로 응답 지연이 됩니다.
+
+Langfuse가 쓰는 우회법은 **CTE로 감싸 `FINAL`을 떼고, `LIMIT 1 BY`로 직접 중복을 거르는 것**입니다.
+
+```sql
+-- Langfuse getCostForTraces (observations.ts:1202)
+-- "Wrapping the query in a CTE allows us to skip FINAL
+--  which allows Clickhouse to use skip indexes."
+WITH selected_observations AS (
+    SELECT o.total_cost
+    FROM observations o                 -- FINAL 없음
+    WHERE o.project_id = {projectId}
+      AND o.trace_id IN ({traceIds})
+      AND o.start_time >= {ts} - INTERVAL ...
+    ORDER BY o.event_ts DESC
+    LIMIT 1 BY o.id, o.project_id        -- 같은 id 중 event_ts 최신 1행만
+)
+SELECT sum(total_cost) FROM selected_observations
+```
+
+원리:
+
+- `FINAL`은 "머지를 강제"하지만, `ORDER BY event_ts DESC` + `LIMIT 1 BY o.id`는 "같은 `id`의 최신 `event_ts` 행만 남긴다" — `ReplacingMergeTree`의 dedup semantics를 **쿼리로 직접 재현**합니다. 결과는 `FINAL`과 논리적으로 동등.
+- `FINAL`을 안 쓰므로 ClickHouse가 `WHERE`의 skip index(bloom/minmax)를 정상적으로 활용 → 읽는 파트가 줄어듭니다. 머지가 끝났든 안 끝났든 dedup은 `LIMIT 1 BY`가 보장하므로 eventual consistency 문제도 없습니다.
+
+**Langfuse는 한 단계 더 나아갑니다 — OTel 프로젝트는 dedup 자체를 생략합니다.**
+
+```ts
+// shouldSkipObservationsFinal(projectId)
+//   - env LANGFUSE_API_CLICKHOUSE_DISABLE_OBSERVATIONS_FINAL=true → skip
+//   - isProjectOtelUser(projectId)                                → skip
+// 주석: "OTel projects use immutable spans - no need for deduplication"
+```
+
+OTel span은 emit 후 갱신되지 않는 **immutable** 데이터입니다. 같은 `id`로 새 버전이 들어올 일이 없으니 중복 자체가 존재하지 않고, `FINAL`도 `LIMIT 1 BY`도 불필요 — 평범한 `SELECT`로 충분합니다. count 쿼리도 같은 논리로 약간의 오차를 허용해 `FINAL`을 뗍니다(`// some inaccuracy in count is acceptable`).
+
+정리하면 비용 순서대로 세 단계:
+
+| 단계 | 방식 | 정확성 | 비용 |
+|---|---|---|---|
+| 1 | `FROM observations FINAL` | exact, 강제 머지 | 가장 비쌈 (skip index 무력화) |
+| 2 | CTE + `LIMIT 1 BY id ORDER BY event_ts DESC` | exact (dedup 직접 재현) | 중간 (skip index 활용) |
+| 3 | 평범한 `SELECT` (dedup 생략) | OTel immutable 전제 시 exact | 가장 쌈 |
+
+
+#### 4.4.3 `project_id` 같은 정렬키 prefix 항상 명시
 
 Langfuse의 ordering key는 `(project_id, type, toDate(start_time), id)`. 첫 키를 안 박으면 인덱스가 한 발도 작동 안 합니다.
 
@@ -631,11 +678,11 @@ WHERE project_id = 'p123'        -- 필수
   AND start_time >= '2026-05-01' -- partition pruning
 ```
 
-#### 4.4.3 Partition pruning
+#### 4.4.4 Partition pruning
 
 `toYYYYMM(start_time)` 파티션이라면 WHERE에 `start_time BETWEEN ... AND ...`가 들어가야 partition pruning이 동작합니다. 날짜 범위 없는 쿼리는 풀스캔이 되니 주의.
 
-#### 4.4.4 Map 컬럼 + bloom filter
+#### 4.4.5 Map 컬럼 + bloom filter
 
 ```sql
 SELECT count(), sum(toInt64OrZero(usage_details['input']))
@@ -648,7 +695,7 @@ WHERE project_id = 'p123'
 
 `metadata['key']` equality 비교는 bloom filter로 가속됩니다.
 
-#### 4.4.5 JOIN 시 양쪽 다 `FINAL`
+#### 4.4.6 JOIN 시 양쪽 다 `FINAL`
 
 ```sql
 SELECT o.id, o.trace_id, o.start_time, t.session_id, t.user_id
@@ -1008,7 +1055,7 @@ def get_session_chat_log(project_id: str, session_id: str) -> list[dict]:
 - 분산 추적의 표준은 W3C **TraceContext + Baggage**. B3는 레거시 호환 용도로만 병행
 - OTel은 API + SDK + OTLP + 자동 계측의 4축으로 구성. **vendor-neutral**이 최대 장점
 - Langfuse는 LLM 특화 backend. OTLP 네이티브로 받고, `langfuse.{trace,observation}.metadata.*` prefix로 1급 메타데이터를 박는 게 핵심
-- ClickHouse는 Langfuse의 OLAP 엔진이자 직접 쿼리 가능한 standard 인터페이스. `FINAL`·`project_id`·partition pruning·bloom filter on Map 4가지가 쿼리 성능의 절반
+- ClickHouse는 Langfuse의 OLAP 엔진이자 직접 쿼리 가능한 standard 인터페이스. `FINAL`·`project_id`·partition pruning·bloom filter on Map가 쿼리 성능의 절반. hot-path에서는 `FINAL`을 CTE + `LIMIT 1 BY id`로 우회해 skip index를 살리고, OTel immutable span은 dedup 자체를 생략
 - 통합 설계는 **OTel SDK만 코드에 두고 Langfuse는 backend로, 서비스 로직은 ClickHouse 직접 쿼리** 조합이 vendor lock-in을 최소화
 
 LLM 서비스가 모놀리식 API에서 시작해 워크플로우·에이전트·툴 호출 그래프로 진화할수록, 분산 추적은 운영의 중심축이 됩니다. 표준에 묶고 백엔드는 갈아 끼울 수 있게 두는 설계가, 결국 1~2년 단위로 진화하는 LLM 생태계를 가장 안전하게 추적하는 방법이라고 봅니다.
